@@ -32,7 +32,7 @@ T = TypeVar('T', bound=ComparableTreeDataType)
 
 
 class AvlTreeNode(Collection, Generic[T]):
-    __slots__ = 'val', 'left', 'right', 'balance'
+    __slots__ = 'val', 'left', 'right', 'parent', 'height'
     
     def __init__(self, init: Optional[Iterable[T]] = None):
         self.val: None | T = None
