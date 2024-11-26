@@ -49,8 +49,7 @@ class AvlTreeNode(Collection, Generic[T]):
         if init is not None:
             # quick create for cases where there's only one element without going through full insert logic
             init_list = list(init)
-            self.val = init_list[0]
-            for val in init_list[1:]:
+            for val in init_list:
                 self.insert(AvlTreeNode([val]))
 
     def __str__(self):
@@ -241,6 +240,10 @@ class AvlTreeNode(Collection, Generic[T]):
     def insert(self, to_insert: 'AvlTreeNode[T]') -> tuple['AvlTreeNode[T]', bool]:
         # TODO balance and if the root changes return that instead
         assert(to_insert.val is not None)
+        # if the tree is empty, insert it at the root
+        if self.val is None:
+            self.val = to_insert.val
+            return (self, True)
         node, parent_node = self.search(to_insert.val)
         if node is not None:
             return (self, False)
