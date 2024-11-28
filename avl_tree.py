@@ -453,7 +453,9 @@ class AvlTree(Collection, Generic[T]):
                 delete = random.random() <= delete_prob
                 if delete:
                     if len(vals) > 0:
-                        val = random.sample(vals, k=1)[0]
+                        # making a random choice from a set is a O(N) operation, so this is inefficient
+                        # but for a test, it's fine
+                        val = random.choice(tuple(vals))
                         assert(tree.delete(val))
                         vals.remove(val)
                 else:
