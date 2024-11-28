@@ -47,9 +47,7 @@ class AvlTreeNode(Collection, Generic[T]):
         # height is max child edge count for any path; 0 if no children
         self.height: int = 0
         if init is not None:
-            # quick create for cases where there's only one element without going through full insert logic
-            init_list = list(init)
-            for val in init_list:
+            for val in init:
                 self.insert(AvlTreeNode([val]))
 
     def __str__(self):
