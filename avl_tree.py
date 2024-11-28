@@ -104,6 +104,10 @@ class AvlTreeNode(Collection, Generic[T]):
         # the right node becomes the new root, and the old right node's left node becomes the old root's new right child
         # the old root node becomes the left child of the new root (old right node)
         # use if the tree is right heavy and its right subtree is not left heavy
+        #    *A                  C
+        #   B   C      =>     *A   G
+        #  D E F G            B F H I
+        #       H I          D E
         # TODO: update height
         assert(self.right is not None and self.right.left is not None)
         r = self.right
@@ -120,6 +124,10 @@ class AvlTreeNode(Collection, Generic[T]):
         # the left node becomes the new root, and the old left node's right node becomes the old root's new left child
         # the old root node becomes the right child of the new root (old left node)
         # use if the tree is left heavy and its left subtree is not right heavy
+        #    *A                  B
+        #   B   C      =>      D  *A
+        #  D E F G            H I E C
+        # H I                      F G
         # TODO: update height
         assert(self.left is not None and self.left.right is not None)
         l = self.left
@@ -174,14 +182,13 @@ class AvlTreeNode(Collection, Generic[T]):
                 child = child.right
         return child
 
-    def __rebalance(self, affected_node: 'AvlTreeNode[T]', affected_node_new_height: int):
-        # TODO: verify this is correct
+    def __update_balance(self, affected_node: 'AvlTreeNode[T]', affected_node_new_height: int):
         # rebalance along the path from the affected node to the root (self)
         # don't do any checks here, since we assume this is getting called with a valid tree
         affected_node.height = affected_node_new_height
         node = cast(AvlTreeNode[T], affected_node.parent)
         while node is not self:
-            # assume this is not None; if this is ever None, the tree is invalid
+            # assume node is not None; if this is ever None, the tree is invalid
             children = node.get_children()
             if children:
                 node.height = max(n.height for n in children) + 1
@@ -383,7 +390,6 @@ class AvlTreeNode(Collection, Generic[T]):
 # segment tree https://en.wikipedia.org/wiki/Segment_tree
 # http://www.cs.emory.edu/~cheung/Courses/253/Syllabus/Trees/
 # https://www.cise.ufl.edu/~nemo/cop3530/AVL-Tree-Rotations.pdf
-# TODO: understand how this works
 class AvlTree(Collection, Generic[T]):
     __slots__ = ('root')
 
