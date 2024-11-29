@@ -245,6 +245,7 @@ class AvlTreeNode(Collection, Generic[T]):
 
     def insert(self, to_insert: 'AvlTreeNode[T]') -> tuple['AvlTreeNode[T]', bool]:
         # TODO balance and if the root changes return that instead
+        # TODO set inserted node height
         assert(to_insert.val is not None)
         # if the tree is empty, insert it at the root
         if self.val is None:
