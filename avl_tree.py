@@ -106,7 +106,7 @@ class AvlTreeNode(Collection, Generic[T]):
         #   B   C      =>     *A   G
         #  D E F G            B F H I
         #       H I          D E
-        # TODO: update height
+        # changed height: A (self), C (r)
         assert(self.right is not None and self.right.left is not None)
         r = self.right
         self.right = r.left
@@ -116,6 +116,7 @@ class AvlTreeNode(Collection, Generic[T]):
         r.parent = self.parent
         self.parent = r
         r.__update_parent(self)
+        r.__update_balance(self)
         return r
 
     def __rotate_r(self) -> 'AvlTreeNode[T]':
@@ -126,7 +127,7 @@ class AvlTreeNode(Collection, Generic[T]):
         #   B   C      =>      D  *A
         #  D E F G            H I E C
         # H I                      F G
-        # TODO: update height
+        # changed height: A (self), B (l)
         assert(self.left is not None and self.left.right is not None)
         l = self.left
         self.left = l.right
@@ -136,6 +137,7 @@ class AvlTreeNode(Collection, Generic[T]):
         l.parent = self.parent
         self.parent = l
         l.__update_parent(self)
+        l.__update_balance(self)
         return l
 
     def __rotate_lr(self) -> 'AvlTreeNode[T]':
@@ -180,11 +182,10 @@ class AvlTreeNode(Collection, Generic[T]):
                 child = child.right
         return child
 
-    def __update_balance(self, affected_node: 'AvlTreeNode[T]', affected_node_new_height: int):
+    def __update_balance(self, affected_node: 'AvlTreeNode[T]'):
         # rebalance along the path from the affected node to the root (self)
         # don't do any checks here, since we assume this is getting called with a valid tree
-        affected_node.height = affected_node_new_height
-        node = cast(AvlTreeNode[T], affected_node.parent)
+        node = affected_node
         while node is not self:
             # assume node is not None; if this is ever None, the tree is invalid
             children = node.get_children()
