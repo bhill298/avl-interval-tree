@@ -223,7 +223,7 @@ class AvlTreeNode(Collection, Generic[T]):
         # otherwise perform no rotation
         return self, False
 
-    def __fix_tree_balance(self, descendant: 'AvlTreeNode[T]') -> tuple['AvlTreeNode[T] | None', bool]:
+    def __fix_tree_balance(self, descendant: 'AvlTreeNode[T]') -> tuple['AvlTreeNode[T]', bool]:
         # fix a potential imbalance (if any) caused by an operation
         # start at the descendant and work up to the root; exit if an imbalance is fixed
         node = descendant
@@ -237,15 +237,15 @@ class AvlTreeNode(Collection, Generic[T]):
                     # the root node has been replaced with a new root via rotation; return the new root
                     return new_root, True
                 else:
-                    # a rotation occured, but it was not at the root
-                    return None, True
+                    # a rotation occured, but it was not at the root so it is unchanged
+                    return self, True
             elif node is self:
                 # done
                 break
             # this is an invalid call if the parent is ever None; should never happen
             node = cast('AvlTreeNode[T]', node.parent)
         # no rotation occured
-        return None, False
+        return self, False
 
     def get_balance(self) -> int:
         # the convention is that balance is left height - right height
@@ -314,12 +314,8 @@ class AvlTreeNode(Collection, Generic[T]):
             to_insert.parent = parent_node
             # start searching for imbalance at the parent since the child will not have any imbalance
             new_root, _ = self.__fix_tree_balance(parent_node)
-            if new_root is not None:
-                # this means this is the new root
-                return (new_root, True)
-            else:
-                # otherwise return the old root
-                return (self, True)
+            # the new root may be unchanged
+            return (new_root, True)
 
     def delete(self, val: 'T | AvlTreeNode[T]') -> tuple['AvlTreeNode[T]', bool]:
         """Find a node and delete it from the tree. Return the new root (possibly the same), and True if a node was deleted False otherwise."""
