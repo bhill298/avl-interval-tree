@@ -223,26 +223,29 @@ class AvlTreeNode(Collection, Generic[T]):
         # otherwise perform no rotation
         return self, False
 
-    def __fix_tree_balance(self, descendant: 'AvlTreeNode[T]') -> 'AvlTreeNode[T] | None':
+    def __fix_tree_balance(self, descendant: 'AvlTreeNode[T]') -> tuple['AvlTreeNode[T] | None', bool]:
         # fix a potential imbalance (if any) caused by an operation
         # start at the descendant and work up to the root; exit if an imbalance is fixed
         node = descendant
         while True:
             new_root, rotated = node.__fix_balance()
             if rotated:
+                # TODO: I believe that if an imbalance occurs from a single operation, fixing it at the lowest
+                #  point should fix the imbalance tree imbalance in all cases; is this true?
+                assert(self.__fix_tree_balance(descendant)[1] == False)
                 if node is self:
                     # the root node has been replaced with a new root via rotation; return the new root
-                    return new_root
+                    return new_root, True
                 else:
                     # a rotation occured, but it was not at the root
-                    return None
+                    return None, True
             elif node is self:
                 # done
                 break
             # this is an invalid call if the parent is ever None; should never happen
             node = cast('AvlTreeNode[T]', node.parent)
         # no rotation occured
-        return None
+        return None, False
 
     def get_balance(self) -> int:
         # the convention is that balance is left height - right height
@@ -310,7 +313,7 @@ class AvlTreeNode(Collection, Generic[T]):
             # height is initialized to zero already
             to_insert.parent = parent_node
             # start searching for imbalance at the parent since the child will not have any imbalance
-            new_root = self.__fix_tree_balance(parent_node)
+            new_root, _ = self.__fix_tree_balance(parent_node)
             if new_root is not None:
                 # this means this is the new root
                 return (new_root, True)
