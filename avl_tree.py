@@ -113,7 +113,7 @@ class AvlTreeNode(Collection, Generic[T]):
         r.parent = self.parent
         self.parent = r
         r.__update_parent(self)
-        r.__update_balance(self)
+        r.__update_height(self)
         return r
 
     def __rotate_r(self) -> 'AvlTreeNode[T]':
@@ -134,7 +134,7 @@ class AvlTreeNode(Collection, Generic[T]):
         l.parent = self.parent
         self.parent = l
         l.__update_parent(self)
-        l.__update_balance(self)
+        l.__update_height(self)
         return l
 
     def __rotate_lr(self) -> 'AvlTreeNode[T]':
@@ -179,17 +179,20 @@ class AvlTreeNode(Collection, Generic[T]):
                 child = child.right
         return child
 
-    def __update_balance(self, affected_node: 'AvlTreeNode[T]'):
+    def __update_node_height(self: 'AvlTreeNode[T]'):
+        children = self.get_children()
+        if children:
+            self.height = max(n.height for n in children) + 1
+        else:
+            self.height = 0
+
+    def __update_height(self, affected_node: 'AvlTreeNode[T]'):
         # rebalance along the path from the affected node to the root (self)
         # don't do any checks here, since we assume this is getting called with a valid tree
         node = affected_node
         while node is not self:
+            node.__update_node_height()
             # assume node is not None; if this is ever None, the tree is invalid
-            children = node.get_children()
-            if children:
-                node.height = max(n.height for n in children) + 1
-            else:
-                node.height = 0
             node = cast(AvlTreeNode[T], node.parent)
 
     def __calculate_balance(self) -> int:
@@ -224,14 +227,18 @@ class AvlTreeNode(Collection, Generic[T]):
         return self, False
 
     def __fix_tree_balance(self, descendant: 'AvlTreeNode[T]') -> tuple['AvlTreeNode[T]', bool]:
-        # fix a potential imbalance (if any) caused by an operation
+        # fix a potential imbalance (if any) caused by an operation; also update height on the way up
         # start at the descendant and work up to the root; exit if an imbalance is fixed
+        # after this operation, this path from the descendant up to the root is balanced and has correct height (if
+        # children of descendent have the right height)
         node = descendant
         while True:
+            # update height first so the fix balance operation has the right height
+            node.__update_node_height()
             new_root, rotated = node.__fix_balance()
             if rotated:
                 # TODO: I believe that if an imbalance occurs from a single operation, fixing it at the lowest
-                #  point should fix the imbalance tree imbalance in all cases; is this true?
+                #  point should fix the tree imbalance in all cases; is this true? (once confirmed remove this assert)
                 assert(self.__fix_tree_balance(descendant)[1] == False)
                 if node is self:
                     # the root node has been replaced with a new root via rotation; return the new root
@@ -350,6 +357,7 @@ class AvlTreeNode(Collection, Generic[T]):
             self, _ = self.delete(pred)
             # replace the value, but don't actually finish removing the node
             node.val = pred_val
+            # TODO: in this case, there is no need to rebalance again (the recursive call does the only needed rebalance)
         if not both_present:
             if node.parent is None:
                 # we are deleting the root (ourselves)
