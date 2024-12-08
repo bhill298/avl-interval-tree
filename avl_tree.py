@@ -113,7 +113,7 @@ class AvlTreeNode(Collection, Generic[T]):
         r.parent = self.parent
         self.parent = r
         r.__update_parent(self)
-        r.__update_height(self)
+        self.__update_height()
         return r
 
     def __rotate_r(self) -> 'AvlTreeNode[T]':
@@ -134,7 +134,7 @@ class AvlTreeNode(Collection, Generic[T]):
         l.parent = self.parent
         self.parent = l
         l.__update_parent(self)
-        l.__update_height(self)
+        self.__update_height()
         return l
 
     def __rotate_lr(self) -> 'AvlTreeNode[T]':
@@ -161,7 +161,7 @@ class AvlTreeNode(Collection, Generic[T]):
             stack.extend(n for node in stack.pop() for n in node.get_children())
         return depth
 
-    def __get_successor(self) -> 'AvlTreeNode[T] | None':
+    def __get_descendent_successor(self) -> 'AvlTreeNode[T] | None':
         """Get the least greater node among descendents. Return succ. succ is None if this is the greatest value."""
         # the least value in the right subtree
         child = self.right
@@ -170,7 +170,7 @@ class AvlTreeNode(Collection, Generic[T]):
                 child = child.left
         return child
 
-    def __get_predecessor(self) -> 'AvlTreeNode[T] | None':
+    def __get_descendent_predecessor(self) -> 'AvlTreeNode[T] | None':
         """Get the greatest lesser node among descendents. Return pred. pred is None if this is the least value."""
         # the greatest value in the left subtree
         child = self.left
@@ -186,14 +186,12 @@ class AvlTreeNode(Collection, Generic[T]):
         else:
             self.height = 0
 
-    def __update_height(self, affected_node: 'AvlTreeNode[T]'):
-        # rebalance along the path from the affected node to the root (self)
-        # don't do any checks here, since we assume this is getting called with a valid tree
-        node = affected_node
-        while node is not self:
+    def __update_height(self):
+        # rebalance along the path from the affected node to the root
+        node = self
+        while node is not None:
             node.__update_node_height()
-            # assume node is not None; if this is ever None, the tree is invalid
-            node = cast(AvlTreeNode[T], node.parent)
+            node = node.parent
 
     def __calculate_balance(self) -> int:
         # the tree should always have a balance of -1, 0, or 1
@@ -226,33 +224,29 @@ class AvlTreeNode(Collection, Generic[T]):
         # otherwise perform no rotation
         return self, False
 
-    def __fix_tree_balance(self, descendant: 'AvlTreeNode[T]') -> tuple['AvlTreeNode[T]', bool]:
+    def __fix_tree_balance(self) -> tuple['AvlTreeNode[T] | None', bool]:
         # fix a potential imbalance (if any) caused by an operation; also update height on the way up
-        # start at the descendant and work up to the root; exit if an imbalance is fixed
+        # start at the descendant (self) and work up to the root; exit if an imbalance is fixed
         # after this operation, this path from the descendant up to the root is balanced and has correct height (if
         # children of descendent have the right height)
-        node = descendant
-        while True:
+        node = self
+        while node is not None:
             # update height first so the fix balance operation has the right height
             node.__update_node_height()
             new_root, rotated = node.__fix_balance()
             if rotated:
                 # TODO: I believe that if an imbalance occurs from a single operation, fixing it at the lowest
                 #  point should fix the tree imbalance in all cases; is this true? (once confirmed remove this assert)
-                assert(self.__fix_tree_balance(descendant)[1] == False)
-                if node is self:
+                assert(self.__fix_tree_balance()[1] == False)
+                if node.parent is None:
                     # the root node has been replaced with a new root via rotation; return the new root
                     return new_root, True
                 else:
                     # a rotation occured, but it was not at the root so it is unchanged
-                    return self, True
-            elif node is self:
-                # done
-                break
-            # this is an invalid call if the parent is ever None; should never happen
-            node = cast('AvlTreeNode[T]', node.parent)
+                    return None, True
+            node = node.parent
         # no rotation occured
-        return self, False
+        return None, False
 
     def get_balance(self) -> int:
         # the convention is that balance is left height - right height
@@ -320,61 +314,72 @@ class AvlTreeNode(Collection, Generic[T]):
             # height is initialized to zero already
             to_insert.parent = parent_node
             # start searching for imbalance at the parent since the child will not have any imbalance
-            new_root, _ = self.__fix_tree_balance(parent_node)
+            new_root, _ = parent_node.__fix_tree_balance()
             # the new root may be unchanged
-            return (new_root, True)
+            return (new_root if new_root is not None else self, True)
 
     def delete(self, val: 'T | AvlTreeNode[T]') -> tuple['AvlTreeNode[T]', bool]:
         """Find a node and delete it from the tree. Return the new root (possibly the same), and True if a node was deleted False otherwise."""
         if isinstance(val, AvlTreeNode):
             # already found the node, don't need to find it again
-            node = val
+            to_delete_node = val
         else:
             # try to find this value in the tree
-            node, _ = self.search(val)
-        if node is None:
-            # no node was found, nothing else to do
-            return (self, False)
-        # TODO: rebalance and recompute height if needed
+            to_delete_node, _ = self.search(val)
+            if to_delete_node is None:
+                # no node was found, nothing else to do
+                return (self, False)
         both_present = False
-        if node.left is None:
+        new_root = self
+        if to_delete_node.left is None:
             # right may be None, but that's fine; this means they're both None and so there are no children to move up
-            new_child = node.right
-        elif node.right is None:
+            new_child = to_delete_node.right
+        elif to_delete_node.right is None:
             # right is None but left is not
-            new_child = node.left
+            new_child = to_delete_node.left
         else:
-            # both are not None
+            # the deleted node has two children
             both_present = True
-            # this can be either predecessor or successor, it doesn't matter
+            # this can be either predecessor or successor; it doesn't matter
             # this works because it will be guaranteed to be both greater than the left child (or is the left child)
             # and thus valid for this position, and it is guaranteed to have at most one child
-            pred = node.__get_predecessor()
+            pred = to_delete_node.__get_descendent_predecessor()
             # this must be true since we have a left child
             assert(pred is not None)
             pred_val = pred.val
-            # recursively delete this; since it only has one child at most, will not hit this case again
-            self, _ = self.delete(pred)
-            # replace the value, but don't actually finish removing the node
-            node.val = pred_val
-            # TODO: in this case, there is no need to rebalance again (the recursive call does the only needed rebalance)
+            # recursively delete the predecessor; since it only has one child at most, will not hit this case again
+            new_root, _ = self.delete(pred)
+            # replace the value, but don't actually delete the node object
+            to_delete_node.val = pred_val
+            # in this case, there is no need to rebalance again (the recursive call does the only needed rebalance)
         if not both_present:
-            if node.parent is None:
+            # the deleted node has one child or no children
+            if to_delete_node.parent is None:
                 # we are deleting the root (ourselves)
                 # one last thing to check: if new_child is None, that means this tree is now empty, but we can't assign to None
                 if new_child is None:
                     self.val = None
+                    self.height = 0
                 else:
-                    self = new_child
-            elif node.parent.left is node:
-                # deleting left child
-                node.parent.left = new_child
+                    # just move the one child up and that becomes the new tree
+                    # in this case, its height and balance is correct so no need to rebalance
+                    new_root = new_child
             else:
-                # deleting right child
-                node.parent.right = new_child
-            if new_child is not None and node.parent is not None:
-                new_child.parent = node.parent
-        return (self, True)
+                # not deleting the root
+                if to_delete_node.parent.left is to_delete_node:
+                    # deleted node is paren't left child
+                    to_delete_node.parent.left = new_child
+                else:
+                    # deleted node is paren't right child
+                    to_delete_node.parent.right = new_child
+                if new_child is not None:
+                    # update the moved up node's parent
+                    new_child.parent = to_delete_node.parent
+                # recalculate height and rebalance at the parent (any moved up child still has accurate height / balance)
+                new_root, _ = to_delete_node.parent.__fix_tree_balance()
+                if new_root is None:
+                    new_root = self
+        return (new_root, True)
 
     def print(self, max_width=None, min_chars_per_node=3, empty_node_text='<>'):
         if max_width is None:
