@@ -237,12 +237,12 @@ class AvlTreeNode(Collection, Generic[T]):
         # otherwise perform no rotation
         return self, False
 
-    def __fix_tree_balance(self) -> tuple['AvlTreeNode[T] | None', bool]:
+    def __fix_tree_balance(self, rotate_once: bool) -> 'AvlTreeNode[T] | None':
         """Fix potential imbalances (if any) after an opration from self all the way up to the root. Only one rotation
-        is ever performed, as this is all that should be necessary after a single operation causes potential imbalance.
-        Heights are also updated on the way up whether a rotation occurs or not.
+        is ever performed if rotate_once is set, otherwise will keep checking until it hits the root. Heights are also
+        updated on the way up whether a rotation occurs or not.
 
-        Return (new_root, rotated), where new_root is the new root if a rotation occured at the root node of this tree
+        Return new_root, where new_root is the new root if a rotation occured at the root node of this tree
         (as in the true root and not self of the caller), or None if the root has not changed. rotated is True if a
         rotation occured or False if not rotation occured.
         """
@@ -251,25 +251,28 @@ class AvlTreeNode(Collection, Generic[T]):
         # after this operation, this path from the descendant up to the root is balanced and has correct height (if
         # children of descendent have the right height)
         node = self
+        new_root = None
+        has_rotated = False
         while node is not None:
             # update height first so the fix balance operation has the right height
-            node.__update_node_height()
+            # but after one rotation, skip this since heights have been updated already by the rotation operation
+            if not has_rotated:
+                node.__update_node_height()
             # need to check for root before rotation
             is_root = node.parent is None
-            new_root, rotated = node.__fix_balance()
+            rotated_new_root, rotated = node.__fix_balance()
+            if is_root:
+                # technically, this should always break after this iteration in this case, but just fall through
+                new_root = rotated_new_root
             if rotated:
-                # TODO: I believe that if an imbalance occurs from a single operation, fixing it at the lowest
-                #  point should fix the tree imbalance in all cases; is this true? (once confirmed remove this assert)
-                assert(self.__fix_tree_balance()[1] == False)
-                if is_root:
-                    # the root node has been replaced with a new root via rotation; return the new root
-                    return new_root, True
-                else:
-                    # a rotation occured, but it was not at the root so it is unchanged
-                    return None, True
+                if rotate_once:
+                    break
+                has_rotated = True
+                # need to traverse the tree properly from the new root position
+                node = rotated_new_root
             node = node.parent
         # no rotation occured
-        return None, False
+        return new_root
 
     def get_balance(self) -> int:
         """Get the balance of this node based on the height of its children. A balanced node should have a balance of
@@ -353,7 +356,7 @@ class AvlTreeNode(Collection, Generic[T]):
             # height is initialized to zero already
             to_insert.parent = parent_node
             # start searching for imbalance at the parent since the child will not have any imbalance
-            new_root, _ = parent_node.__fix_tree_balance()
+            new_root = parent_node.__fix_tree_balance(rotate_once=True)
             # the new root may be unchanged
             return (new_root, True)
 
@@ -421,7 +424,8 @@ class AvlTreeNode(Collection, Generic[T]):
                     # update the moved up node's parent
                     new_child.parent = to_delete_node.parent
                 # recalculate height and rebalance at the parent (any moved up child still has accurate height / balance)
-                new_root, _ = to_delete_node.parent.__fix_tree_balance()
+                # allow for multiple rotations since deletions can cause this to happen in some cases
+                new_root = to_delete_node.parent.__fix_tree_balance(rotate_once=False)
         return (new_root, True)
 
     def print(self, max_width=None, min_chars_per_node=3, empty_node_text='<>'):
