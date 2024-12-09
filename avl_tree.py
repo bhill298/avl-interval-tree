@@ -34,8 +34,8 @@ T = TypeVar('T', bound=ComparableTreeDataType)
 class AvlTreeNode(Collection, Generic[T]):
     __slots__ = 'val', 'left', 'right', 'parent', 'height'
     
-    def __init__(self, init: Optional[Iterable[T]] = None):
-        self.val: None | T = None
+    def __init__(self, init: Optional[T] = None):
+        self.val: None | T = init
         self.left: 'None | AvlTreeNode[T]' = None
         self.right: 'None | AvlTreeNode[T]' = None
         # only None for the root
@@ -43,9 +43,6 @@ class AvlTreeNode(Collection, Generic[T]):
         # height of left subtree - height of right subtree; if this subtree is balanced, should be -1, 0, or 1
         # height is max child edge count for any path; 0 if no children
         self.height: int = 0
-        if init is not None:
-            for val in init:
-                self.insert(val)
 
     def __str__(self):
         s = str(self.val) if self.val is not None else '<Empty>'
@@ -257,12 +254,14 @@ class AvlTreeNode(Collection, Generic[T]):
         while node is not None:
             # update height first so the fix balance operation has the right height
             node.__update_node_height()
+            # need to check for root before rotation
+            is_root = node.parent is None
             new_root, rotated = node.__fix_balance()
             if rotated:
                 # TODO: I believe that if an imbalance occurs from a single operation, fixing it at the lowest
                 #  point should fix the tree imbalance in all cases; is this true? (once confirmed remove this assert)
                 assert(self.__fix_tree_balance()[1] == False)
-                if node.parent is None:
+                if is_root:
                     # the root node has been replaced with a new root via rotation; return the new root
                     return new_root, True
                 else:
@@ -345,7 +344,7 @@ class AvlTreeNode(Collection, Generic[T]):
         else:
             # if the parent node were None, we'd be inserting at the root; that should already be handled
             assert(parent_node is not None)
-            to_insert = AvlTreeNode([to_insert_val])
+            to_insert = AvlTreeNode(to_insert_val)
             # the place where the node would be inserted is guaranteed to not have a child
             if to_insert_val < parent_node.val:
                 parent_node.left = to_insert
@@ -505,7 +504,13 @@ class AvlTree(Collection, Generic[T]):
 
     def __init__(self, init: Optional[Iterable[T]] = None):
         """Initialize an AVL tree, optionally with an iterable of values to initially insert."""
-        self.root = AvlTreeNode(init)
+        if init:
+            first, *rest = init
+            self.root = AvlTreeNode(first)
+            for val in rest:
+                self.insert(val)
+        else:
+            self.root = AvlTreeNode()
 
     def __len__(self):
         return len(self.root)
