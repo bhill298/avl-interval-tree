@@ -286,15 +286,15 @@ class AvlTreeNode(Collection, Generic[T]):
         """"""
         if self.val is not None:
             stack: list['AvlTreeNode[T]'] = [self]
-            done: set['AvlTreeNode[T]'] = set()
+            done: set[T | None] = set()
             while stack:
                 node = stack[-1]
-                if node.left is None or node.left in done:
+                if node.left is None or node.left.val in done:
                     stack.pop()
                     if node.right is not None:
                         stack.append(node.right)
                     # if we want to save space for large trees, we can delete elements when they're not needed
-                    done.add(node)
+                    done.add(node.val)
                     yield node
                 else:
                     stack.append(node.left)
