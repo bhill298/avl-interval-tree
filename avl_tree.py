@@ -84,13 +84,14 @@ class AvlTreeNode(Collection, Generic[T]):
     def __update_parent(self, node: 'AvlTreeNode[T]'):
         """Update self.parent to replace node (one of its current children) with self."""
         # assume this is getting called in a valid context and that self has a parent
-        p = cast(AvlTreeNode[T], self.parent)
-        if p.left is node:
-            p.left = self
-        elif p.right is node:
-            p.right = self
-        else:
-            raise RuntimeError('Replaced child does not exist in parent')
+        p = self.parent
+        if p is not None:
+            if p.left is node:
+                p.left = self
+            elif p.right is node:
+                p.right = self
+            else:
+                raise RuntimeError('Replaced child does not exist in parent')
 
     def __rotate_l(self) -> 'AvlTreeNode[T]':
         """Perform a left rotation rooted at self. Will fail if a left rotation is invalid for this node.
@@ -106,7 +107,7 @@ class AvlTreeNode(Collection, Generic[T]):
         #  D E F G            B F H I
         #       H I          D E
         # changed height: A (self), C (r)
-        assert(self.right is not None and self.right.left is not None)
+        assert(self.right is not None)
         r = self.right
         self.right = r.left
         if r.left is not None:
@@ -132,7 +133,7 @@ class AvlTreeNode(Collection, Generic[T]):
         #  D E F G            H I E C
         # H I                      F G
         # changed height: A (self), B (l)
-        assert(self.left is not None and self.left.right is not None)
+        assert(self.left is not None)
         l = self.left
         self.left = l.right
         if l.right is not None:
