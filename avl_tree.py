@@ -81,21 +81,23 @@ class AvlTreeNode(Collection, Generic[T]):
             return False
         return True
 
-    def __get_val(self) -> T:
-        # the only time val should be none is in an empty root; outside of those cases, can use this
-        return cast(T, self.val)
-    
     def __update_parent(self, node: 'AvlTreeNode[T]'):
-        # update self.parent to now link to itself, replacing node
-        if self.parent is not None:
-            if self.parent.left is node:
-                self.parent.left = self
-            elif self.parent.right is node:
-                self.parent.right = self
-            else:
-                raise RuntimeError('Replaced child does not exist in parent')
+        """Update self.parent to replace node (one of its current children) with self."""
+        # assume this is getting called in a valid context and that self has a parent
+        p = cast(AvlTreeNode[T], self.parent)
+        if p.left is node:
+            p.left = self
+        elif p.right is node:
+            p.right = self
+        else:
+            raise RuntimeError('Replaced child does not exist in parent')
 
     def __rotate_l(self) -> 'AvlTreeNode[T]':
+        """Perform a left rotation rooted at self. Will fail if a left rotation is invalid for this node.
+        
+        Updates all changed heights up to the root.
+        Returns the new root replacing self from this rotation (the former right node).
+        """
         # the right node becomes the new root, and the old right node's left node becomes the old root's new right child
         # the old root node becomes the left child of the new root (old right node)
         # use if the tree is right heavy and its right subtree is not left heavy
@@ -117,6 +119,11 @@ class AvlTreeNode(Collection, Generic[T]):
         return r
 
     def __rotate_r(self) -> 'AvlTreeNode[T]':
+        """Perform a right rotation rooted at self. Will fail if a right rotation is invalid for this node.
+        
+        Updates all changed heights to the root.
+        Returns the new root replacing self from this rotation (the former left node).
+        """
         # the left node becomes the new root, and the old left node's right node becomes the old root's new left child
         # the old root node becomes the right child of the new root (old left node)
         # use if the tree is left heavy and its left subtree is not right heavy
@@ -152,8 +159,10 @@ class AvlTreeNode(Collection, Generic[T]):
         return self.__rotate_r()
 
     def __calculate_depth(self) -> int:
-        """Returns max depth of descendents of this node as the number of child edges. If this is a leaf, the
-        depth is 0. If it has one level of children, its depth is 1 and so on."""
+        """Returns max depth of descendents of this node as the number of child edges. If this is a leaf, the depth is
+        0. If it has one level of children, its depth is 1 and so on. This calculates it manually and does not use the
+        height field.
+        """
         depth = 0
         stack = [n for n in self.get_children()]
         while stack:
@@ -162,7 +171,7 @@ class AvlTreeNode(Collection, Generic[T]):
         return depth
 
     def __get_descendent_successor(self) -> 'AvlTreeNode[T] | None':
-        """Get the least greater node among descendents. Return succ. succ is None if this is the greatest value."""
+        """Get the least greater node among descendents. Return the successor or None if there are no right children."""
         # the least value in the right subtree
         child = self.right
         if child is not None:
@@ -171,7 +180,7 @@ class AvlTreeNode(Collection, Generic[T]):
         return child
 
     def __get_descendent_predecessor(self) -> 'AvlTreeNode[T] | None':
-        """Get the greatest lesser node among descendents. Return pred. pred is None if this is the least value."""
+        """Get the greatest lesser node among descendents. Return the predecessor or None if there are no left children."""
         # the greatest value in the left subtree
         child = self.left
         if child is not None:
@@ -180,6 +189,7 @@ class AvlTreeNode(Collection, Generic[T]):
         return child
 
     def __update_node_height(self: 'AvlTreeNode[T]'):
+        """Quickly update this node's height by looking at the heights of its children. Assumes child heights are valid."""
         children = self.get_children()
         if children:
             self.height = max(n.height for n in children) + 1
@@ -187,21 +197,26 @@ class AvlTreeNode(Collection, Generic[T]):
             self.height = 0
 
     def __update_height(self):
-        # rebalance along the path from the affected node to the root
+        """Update the height of the tree from self up to the root."""
         node = self
         while node is not None:
             node.__update_node_height()
             node = node.parent
 
     def __calculate_balance(self) -> int:
+        """Calculate the balance of this node manually, not checking the height field."""
         # the tree should always have a balance of -1, 0, or 1
         return (self.left.__calculate_depth() + 1 if self.left is not None else 0) - (self.right.__calculate_depth() + 1 if self.right is not None else 0)
     
     def __fix_balance(self) -> tuple['AvlTreeNode[T]', bool]:
-        # perform balance update based on current balance; return new root if it changes or old root
-        # this only performs rotations on the root and won't recursively check children
-        # height values are also assumed to be accurate
-        # any height updates that need to be performed are done automatically
+        """Fix the balance at this node if there is any balance to fix. This only checks for balance at this node. Any
+        height updates that need to be performed happen automatically. Caller needs to ensure accurate height of
+        children so balance can be calculated properly.
+        
+        Return (new_root, rotated), where new_root is the new root at this node (either the current node or the new one
+        if a rotation occured). rotated is True if a rotation occured or False if one did not occur.
+        """
+        # check current balance to see if a rotation is necessary
         balance = self.get_balance()
         if balance < -1:
             # root is right heavy
@@ -225,6 +240,14 @@ class AvlTreeNode(Collection, Generic[T]):
         return self, False
 
     def __fix_tree_balance(self) -> tuple['AvlTreeNode[T] | None', bool]:
+        """Fix potential imbalances (if any) after an opration from self all the way up to the root. Only one rotation
+        is ever performed, as this is all that should be necessary after a single operation causes potential imbalance.
+        Heights are also updated on the way up whether a rotation occurs or not.
+
+        Return (new_root, rotated), where new_root is the new root if a rotation occured at the root node of this tree
+        (as in the true root and not self of the caller), or None if the root has not changed. rotated is True if a
+        rotation occured or False if not rotation occured.
+        """
         # fix a potential imbalance (if any) caused by an operation; also update height on the way up
         # start at the descendant (self) and work up to the root; exit if an imbalance is fixed
         # after this operation, this path from the descendant up to the root is balanced and has correct height (if
@@ -249,12 +272,15 @@ class AvlTreeNode(Collection, Generic[T]):
         return None, False
 
     def get_balance(self) -> int:
-        # the convention is that balance is left height - right height
-        # this means that a positive balance is "left heavy" and a negative balance is "right heavy"
-        # -1, 0, or 1 indicates a sufficiently balanced node
+        """Get the balance of this node based on the height of its children. A balanced node should have a balance of
+        -1, 0, or 1. The convention is that balance is left height - right height. This means a positive balance is left
+        heavy, and a negative balance is right heavy.
+        """
         return (self.left.height + 1 if self.left is not None else 0) - (self.right.height + 1 if self.right is not None else 0)
     
     def sorted(self):
+        """Return a sorted iterator of the values for the tree at this node."""
+        """"""
         if self.val is not None:
             stack: list['AvlTreeNode[T]'] = [self]
             done: set['AvlTreeNode[T]'] = set()
@@ -271,17 +297,24 @@ class AvlTreeNode(Collection, Generic[T]):
                     stack.append(node.left)
     
     def get_children(self) -> tuple['AvlTreeNode[T]', ...]:
+        """Get a tuple of this node's children. May have 0, 1, or 2 elements. If it has 2 children, the returned order
+        will always be (left, right).
+        """
         return tuple(i for i in [self.left, self.right] if i is not None)
     
     def search(self, val: T) -> tuple['AvlTreeNode[T] | None', 'AvlTreeNode[T] | None']:
-        """Search for value. Return the found node (or None), and its parent / leaf node encountered at end of search if not found (or None if tree is empty)."""
+        """Search for value among this node and its descendents.
+        
+        Return (node, parent), where node is the found node (or None if no node found), and parent is the parent of the
+        found node, the leaf node at the end of the search, or None if the tree is empty.
+        """
         # the tree is empty, so there is no found node or parent node
         if self.val is None:
             return (None, None)
         node = self
         parent_node = node
         while node is not None:
-            nodeval = node.__get_val()
+            nodeval = cast(T, node.val)
             if val == nodeval:
                 # if the node and parent_node are the same, this is the root and thus it has no parent
                 return (node, parent_node if parent_node is not node else None)
@@ -293,15 +326,21 @@ class AvlTreeNode(Collection, Generic[T]):
         # node not found
         return (None, parent_node)
 
-    def insert(self, to_insert_val: T) -> tuple['AvlTreeNode[T]', bool]:
+    def insert(self, to_insert_val: T) -> tuple['AvlTreeNode[T] | None', bool]:
+        """Insert a value into the tree. If the tree is empty, insert it at the root.
+
+        returns (new_root, inserted), where new_root is the new root if the root (as in the root of the whole tree not
+        necessarily self) changed due to a rebalance (or None otherwise), and inserted is True if the value was inserted
+        or False if the value was already present.
+        """
         # if the tree is empty, insert it at the root
         if self.val is None:
             self.val = to_insert_val
-            return (self, True)
+            return (None, True)
         node, parent_node = self.search(to_insert_val)
         if node is not None:
             # node already exists in the tree
-            return (self, False)
+            return (None, False)
         else:
             # if the parent node were None, we'd be inserting at the root; that should already be handled
             assert(parent_node is not None)
@@ -316,10 +355,16 @@ class AvlTreeNode(Collection, Generic[T]):
             # start searching for imbalance at the parent since the child will not have any imbalance
             new_root, _ = parent_node.__fix_tree_balance()
             # the new root may be unchanged
-            return (new_root if new_root is not None else self, True)
+            return (new_root, True)
 
-    def delete(self, val: 'T | AvlTreeNode[T]') -> tuple['AvlTreeNode[T]', bool]:
-        """Find a node and delete it from the tree. Return the new root (possibly the same), and True if a node was deleted False otherwise."""
+    def delete(self, val: 'T | AvlTreeNode[T]') -> tuple['AvlTreeNode[T] | None', bool]:
+        """Find a node and delete it from the tree. Return the new root (possibly the same), and True if a node was
+        deleted False otherwise.
+        
+        returns (new_root, deleted), where new_root is the new root if the root (as in the root of the whole tree not
+        necessarily self) changed due to a rebalance (or None otherwise), and deleted is True if the value was deleted
+        or False if the value was not present.
+        """
         if isinstance(val, AvlTreeNode):
             # already found the node, don't need to find it again
             to_delete_node = val
@@ -328,9 +373,9 @@ class AvlTreeNode(Collection, Generic[T]):
             to_delete_node, _ = self.search(val)
             if to_delete_node is None:
                 # no node was found, nothing else to do
-                return (self, False)
+                return (None, False)
         both_present = False
-        new_root = self
+        new_root = None
         if to_delete_node.left is None:
             # right may be None, but that's fine; this means they're both None and so there are no children to move up
             new_child = to_delete_node.right
@@ -377,11 +422,10 @@ class AvlTreeNode(Collection, Generic[T]):
                     new_child.parent = to_delete_node.parent
                 # recalculate height and rebalance at the parent (any moved up child still has accurate height / balance)
                 new_root, _ = to_delete_node.parent.__fix_tree_balance()
-                if new_root is None:
-                    new_root = self
         return (new_root, True)
 
     def print(self, max_width=None, min_chars_per_node=3, empty_node_text='<>'):
+        """Print the tree."""
         if max_width is None:
             max_width = shutil.get_terminal_size((120, 24)).columns
         # sometimes there's some extra space written off the end of a line, not sure why
@@ -459,6 +503,7 @@ class AvlTree(Collection, Generic[T]):
     __slots__ = ('root')
 
     def __init__(self, init: Optional[Iterable[T]] = None):
+        """Initialize an AVL tree, optionally with an iterable of values to initially insert."""
         self.root = AvlTreeNode(init)
 
     def __len__(self):
@@ -481,35 +526,38 @@ class AvlTree(Collection, Generic[T]):
         return self.root == other.root
     
     def sorted(self) -> Iterable[T]:
+        """Return a sorted iterator of the values in the AVL tree."""
         for node in self.root.sorted():
             if node.val is not None:
                 yield node.val
-    
-    def get_balance(self):
-        return self.root.get_balance()
-    
-    def is_empty(self) -> bool:
-        root = self.root
-        return root.val is None and root.left is None and root.right is None
 
     def insert(self, val: T):
+        """Insert a value into the AVL tree. Return True if the value was inserted, False if it was already present."""
         node, inserted = self.root.insert(val)
-        self.root = node
+        if node is not None:
+            self.root = node
         return inserted
 
     def delete(self, val: T):
+        """Insert a value from the AVL tree. Return True if the value was deleted, False if it was not present."""
         node, deleted = self.root.delete(val)
-        self.root = node
+        if node is not None:
+            self.root = node
         return deleted
 
     def search(self, val: T):
+        """Return True if a value is in the AVL tree. False if not."""
         return self.root.search(val)[0] is not None
 
     def print(self, *args, **kwargs):
+        """Try to print the tree to console in a human-readable format as space allows.
+        Will not print the full tree if large enough.
+        """
         self.root.print(*args, **kwargs)
 
     @staticmethod
     def test(iters=1, iters_per_iter=1000, delete_prob=.1, print_time=True, print_tree=False):
+        """Run tests. Will throw an assertion if there is an error."""
         import random
         import time
         start_time = time.time()
