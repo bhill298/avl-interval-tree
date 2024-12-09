@@ -263,10 +263,10 @@ class AvlTreeNode(Collection, Generic[T]):
         height field and should only be used for testing since it requires walking the tree.
         """
         depth = 0
-        stack = [n for n in self.get_children()]
-        while stack:
+        next_level = list(self.get_children())
+        while next_level:
             depth += 1
-            stack.extend(n for node in stack.pop() for n in node.get_children())
+            next_level = [n for node in next_level for n in node.get_children()]
         return depth
 
     def calculate_balance(self) -> int:
