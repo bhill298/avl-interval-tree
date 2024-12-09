@@ -506,23 +506,23 @@ class AvlTreeNode(Collection, Generic[T]):
 # http://www.cs.emory.edu/~cheung/Courses/253/Syllabus/Trees/
 # https://www.cise.ufl.edu/~nemo/cop3530/AVL-Tree-Rotations.pdf
 class AvlTree(Collection, Generic[T]):
-    __slots__ = ('root')
+    __slots__ = ('_root')
 
     def __init__(self, init: Optional[Iterable[T]] = None):
         """Initialize the tree, optionally with an iterable of values to initially insert."""
         if init:
             first, *rest = init
-            self.root = AvlTreeNode(first)
+            self._root = AvlTreeNode(first)
             for val in rest:
                 self.insert(val)
         else:
-            self.root = AvlTreeNode()
+            self._root = AvlTreeNode()
 
     def __len__(self):
-        return len(self.root)
+        return len(self._root)
 
     def __iter__(self):
-        for node in self.root:
+        for node in self._root:
             yield node.val
     
     def __str__(self):
@@ -532,34 +532,34 @@ class AvlTree(Collection, Generic[T]):
         return str(self)
     
     def __contains__(self, x: T):
-        return x in self.root
+        return x in self._root
 
     def __eq__(self, other):
-        return self.root == other.root
+        return self._root == other.root
     
     def sorted(self) -> Iterable[T]:
         """Return a sorted iterator over the values in the tree."""
-        for node in self.root.sorted():
+        for node in self._root.sorted():
             if node.val is not None:
                 yield node.val
 
     def insert(self, val: T):
         """Insert a value into the tree. Return True if the value was inserted, False if it was already present."""
-        node, inserted = self.root.insert(val)
+        node, inserted = self._root.insert(val)
         if node is not None:
-            self.root = node
+            self._root = node
         return inserted
 
     def delete(self, val: T):
         """Insert a value from the tree. Return True if the value was deleted, False if it was not present."""
-        node, deleted = self.root.delete(val)
+        node, deleted = self._root.delete(val)
         if node is not None:
-            self.root = node
+            self._root = node
         return deleted
 
     def search(self, val: T):
         """Return True if a value is in the tree. False if not."""
-        return self.root.search(val)[0] is not None
+        return self._root.search(val)[0] is not None
 
     def extend(self, vals: Iterable[T]) -> int:
         """Add an iterable of elements to the tree. Returns the number of elements inserted."""
@@ -572,7 +572,7 @@ class AvlTree(Collection, Generic[T]):
         """Try to print the tree to console in a human-readable format as space allows.
         Will not print the full tree if large enough.
         """
-        self.root.print(*args, **kwargs)
+        self._root.print(*args, **kwargs)
 
     @staticmethod
     def test(iters=1, iters_per_iter=1000, delete_prob=.1, print_time=True, print_tree=False):
@@ -585,7 +585,7 @@ class AvlTree(Collection, Generic[T]):
             tree: AvlTree[int] = AvlTree()
             # the tree should start out empty
             assert(len(tree) == 0)
-            assert(tree.root.val is None)
+            assert(tree._root.val is None)
             # insert and delete a group of nodes, adding them both to the tree and to a set
             for _ in range(iters_per_iter):
                 delete = random.random() <= delete_prob
@@ -606,7 +606,7 @@ class AvlTree(Collection, Generic[T]):
             assert(list(tree.sorted()) == sorted(vals))
             none_parent_count = 0
             seen_vals: set[int] = set()
-            for el in tree.root:
+            for el in tree._root:
                 # the balance should be -1, 0, or 1, the calculated balance and balance from height should match
                 # the parent should also have that node as one of its children
                 balance = el.get_balance()
@@ -633,7 +633,7 @@ class AvlTree(Collection, Generic[T]):
                 assert(tree.delete(val))
             # after deleting everything, the tree should be empty
             assert(len(tree) == 0)
-            assert(tree.root.val is None)
+            assert(tree._root.val is None)
             assert(list(tree) == [])
         end_time = time.time()
         if print_time:
