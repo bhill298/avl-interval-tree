@@ -279,7 +279,7 @@ class AvlTreeNode(Collection, Generic[T]):
         return (self.left.height + 1 if self.left is not None else 0) - (self.right.height + 1 if self.right is not None else 0)
     
     def sorted(self):
-        """Return a sorted iterator of the values for the tree at this node."""
+        """Return a sorted iterator over the values of the tree at this node."""
         """"""
         if self.val is not None:
             stack: list['AvlTreeNode[T]'] = [self]
@@ -503,7 +503,7 @@ class AvlTree(Collection, Generic[T]):
     __slots__ = ('root')
 
     def __init__(self, init: Optional[Iterable[T]] = None):
-        """Initialize an AVL tree, optionally with an iterable of values to initially insert."""
+        """Initialize the tree, optionally with an iterable of values to initially insert."""
         if init:
             first, *rest = init
             self.root = AvlTreeNode(first)
@@ -532,28 +532,35 @@ class AvlTree(Collection, Generic[T]):
         return self.root == other.root
     
     def sorted(self) -> Iterable[T]:
-        """Return a sorted iterator of the values in the AVL tree."""
+        """Return a sorted iterator over the values in the tree."""
         for node in self.root.sorted():
             if node.val is not None:
                 yield node.val
 
     def insert(self, val: T):
-        """Insert a value into the AVL tree. Return True if the value was inserted, False if it was already present."""
+        """Insert a value into the tree. Return True if the value was inserted, False if it was already present."""
         node, inserted = self.root.insert(val)
         if node is not None:
             self.root = node
         return inserted
 
     def delete(self, val: T):
-        """Insert a value from the AVL tree. Return True if the value was deleted, False if it was not present."""
+        """Insert a value from the tree. Return True if the value was deleted, False if it was not present."""
         node, deleted = self.root.delete(val)
         if node is not None:
             self.root = node
         return deleted
 
     def search(self, val: T):
-        """Return True if a value is in the AVL tree. False if not."""
+        """Return True if a value is in the tree. False if not."""
         return self.root.search(val)[0] is not None
+
+    def extend(self, vals: Iterable[T]) -> int:
+        """Add an iterable of elements to the tree. Returns the number of elements inserted."""
+        inserted = 0
+        for val in vals:
+            inserted += int(self.insert(val))
+        return inserted
 
     def print(self, *args, **kwargs):
         """Try to print the tree to console in a human-readable format as space allows.
