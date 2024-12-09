@@ -219,7 +219,7 @@ class AvlTreeNode(Collection, Generic[T]):
         if balance < -1:
             # root is right heavy
             right_balance = self.right.get_balance() if self.right is not None else 0
-            if right_balance > 1:
+            if right_balance > 0:
                 # right left heavy
                 return self.__rotate_lr(), True
             else:
@@ -228,7 +228,7 @@ class AvlTreeNode(Collection, Generic[T]):
         elif balance > 1:
             # root is left heavy
             left_balance = self.left.get_balance() if self.left is not None else 0
-            if left_balance < -1:
+            if left_balance < 0:
                 # left right heavy
                 return self.__rotate_rl(), True
             else:
