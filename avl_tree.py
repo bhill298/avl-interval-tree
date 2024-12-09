@@ -201,11 +201,6 @@ class AvlTreeNode(Collection, Generic[T]):
             node.__update_node_height()
             node = node.parent
 
-    def __calculate_balance(self) -> int:
-        """Calculate the balance of this node manually, not checking the height field."""
-        # the tree should always have a balance of -1, 0, or 1
-        return (self.left.__calculate_depth() + 1 if self.left is not None else 0) - (self.right.__calculate_depth() + 1 if self.right is not None else 0)
-    
     def __fix_balance(self) -> tuple['AvlTreeNode[T]', bool]:
         """Fix the balance at this node if there is any balance to fix. This only checks for balance at this node. Any
         height updates that need to be performed happen automatically. Caller needs to ensure accurate height of
@@ -273,6 +268,13 @@ class AvlTreeNode(Collection, Generic[T]):
             node = node.parent
         # no rotation occured
         return new_root
+
+    def calculate_balance(self) -> int:
+        """Calculate the balance of this node manually, not checking the height field. This should only be used for
+        testing since it requires walking the tree.
+        """
+        # the tree should always have a balance of -1, 0, or 1
+        return (self.left.__calculate_depth() + 1 if self.left is not None else 0) - (self.right.__calculate_depth() + 1 if self.right is not None else 0)
 
     def get_balance(self) -> int:
         """Get the balance of this node based on the height of its children. A balanced node should have a balance of
@@ -608,7 +610,7 @@ class AvlTree(Collection, Generic[T]):
                 # the balance should be -1, 0, or 1, the calculated balance and balance from height should match
                 # the parent should also have that node as one of its children
                 balance = el.get_balance()
-                assert(balance == el.__calculate_balance())
+                assert(balance == el.calculate_balance())
                 assert(abs(balance) <= 1)
                 if el.parent is None:
                     none_parent_count += 1
