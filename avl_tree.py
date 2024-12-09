@@ -156,18 +156,6 @@ class AvlTreeNode(Collection, Generic[T]):
         self.left.__rotate_l()
         return self.__rotate_r()
 
-    def __calculate_depth(self) -> int:
-        """Returns max depth of descendents of this node as the number of child edges. If this is a leaf, the depth is
-        0. If it has one level of children, its depth is 1 and so on. This calculates it manually and does not use the
-        height field.
-        """
-        depth = 0
-        stack = [n for n in self.get_children()]
-        while stack:
-            depth += 1
-            stack.extend(n for node in stack.pop() for n in node.get_children())
-        return depth
-
     def __get_descendent_successor(self) -> 'AvlTreeNode[T] | None':
         """Get the least greater node among descendents. Return the successor or None if there are no right children."""
         # the least value in the right subtree
@@ -269,12 +257,24 @@ class AvlTreeNode(Collection, Generic[T]):
         # no rotation occured
         return new_root
 
+    def calculate_height(self) -> int:
+        """Returns max depth of descendents of this node as the number of child edges. If this is a leaf, the depth is
+        0. If it has one level of children, its depth is 1 and so on. This calculates it manually and does not use the
+        height field and should only be used for testing since it requires walking the tree.
+        """
+        depth = 0
+        stack = [n for n in self.get_children()]
+        while stack:
+            depth += 1
+            stack.extend(n for node in stack.pop() for n in node.get_children())
+        return depth
+
     def calculate_balance(self) -> int:
         """Calculate the balance of this node manually, not checking the height field. This should only be used for
         testing since it requires walking the tree.
         """
         # the tree should always have a balance of -1, 0, or 1
-        return (self.left.__calculate_depth() + 1 if self.left is not None else 0) - (self.right.__calculate_depth() + 1 if self.right is not None else 0)
+        return (self.left.calculate_height() + 1 if self.left is not None else 0) - (self.right.calculate_height() + 1 if self.right is not None else 0)
 
     def get_balance(self) -> int:
         """Get the balance of this node based on the height of its children. A balanced node should have a balance of
