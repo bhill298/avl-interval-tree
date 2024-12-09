@@ -615,7 +615,7 @@ class AvlTree(Collection, Generic[T]):
                 if el.parent is None:
                     none_parent_count += 1
                 else:
-                    assert(el.parent.left is el or el.parent.left is el)
+                    assert(el.parent.left is el or el.parent.right is el)
                 # if the tree is not empty, then no value should be None and there should be no duplicates
                 assert(el.val is not None)
                 assert(el.val not in seen_vals)
