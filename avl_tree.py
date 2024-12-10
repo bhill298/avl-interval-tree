@@ -622,7 +622,9 @@ class AvlTree(Collection, Generic[T]):
                 assert(el.val not in seen_vals)
                 seen_vals.add(el.val)
             # there should exactly one element with no parent (the root)
-            assert(none_parent_count == 1)
+            # also have to check manually in the empty case since there is nothing to iterate over
+            assert(none_parent_count == 1 or (len(tree) == 0 and tree._root.parent is None))
+            assert(bool(tree) == True or len(tree) == 0)
             if print_tree:
                 tree.print()
             for val in vals:
@@ -636,6 +638,7 @@ class AvlTree(Collection, Generic[T]):
             assert(len(tree) == 0)
             assert(tree._root.val is None)
             assert(list(tree) == [])
+            assert(bool(tree) == False)
         end_time = time.time()
         if print_time:
             print(f'Test successful with {iters} iterations and {iters_per_iter} steps per iteration')
