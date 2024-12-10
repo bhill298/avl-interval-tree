@@ -257,7 +257,7 @@ class AvlTreeNode(Collection, Generic[T]):
         # no rotation occured
         return new_root
 
-    def calculate_height(self) -> int:
+    def _calculate_height(self) -> int:
         """Returns max depth of descendents of this node as the number of child edges. If this is a leaf, the depth is
         0. If it has one level of children, its depth is 1 and so on. This calculates it manually and does not use the
         height field and should only be used for testing since it requires walking the tree.
@@ -269,12 +269,12 @@ class AvlTreeNode(Collection, Generic[T]):
             next_level = [n for node in next_level for n in node.get_children()]
         return depth
 
-    def calculate_balance(self) -> int:
+    def _calculate_balance(self) -> int:
         """Calculate the balance of this node manually, not checking the height field. This should only be used for
         testing since it requires walking the tree.
         """
         # the tree should always have a balance of -1, 0, or 1
-        return (self.left.calculate_height() + 1 if self.left is not None else 0) - (self.right.calculate_height() + 1 if self.right is not None else 0)
+        return (self.left._calculate_height() + 1 if self.left is not None else 0) - (self.right._calculate_height() + 1 if self.right is not None else 0)
 
     def get_balance(self) -> int:
         """Get the balance of this node based on the height of its children. A balanced node should have a balance of
@@ -611,7 +611,7 @@ class AvlTree(Collection, Generic[T]):
                 # the balance should be -1, 0, or 1, the calculated balance and balance from height should match
                 # the parent should also have that node as one of its children
                 balance = el.get_balance()
-                assert(balance == el.calculate_balance())
+                assert(balance == el._calculate_balance())
                 assert(abs(balance) <= 1)
                 if el.parent is None:
                     none_parent_count += 1
