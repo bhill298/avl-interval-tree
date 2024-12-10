@@ -414,6 +414,7 @@ class AvlTreeNode(Collection, Generic[T]):
                     # just move the one child up and that becomes the new tree
                     # in this case, its height and balance is correct so no need to rebalance
                     new_root = new_child
+                    new_root.parent = None
             else:
                 # not deleting the root
                 if to_delete_node.parent.left is to_delete_node:
