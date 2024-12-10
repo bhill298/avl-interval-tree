@@ -32,7 +32,7 @@ T = TypeVar('T', bound=ComparableTreeDataType)
 
 
 class AvlTreeNode(Collection, Generic[T]):
-    __slots__ = 'val', 'left', 'right', 'parent', 'height'
+    __slots__ = 'val', 'left', 'right', 'parent', 'height', 'num_descendents'
     
     def __init__(self, init: Optional[T] = None):
         self.val: None | T = init
@@ -43,6 +43,7 @@ class AvlTreeNode(Collection, Generic[T]):
         # height of left subtree - height of right subtree; if this subtree is balanced, should be -1, 0, or 1
         # height is max child edge count for any path; 0 if no children
         self.height: int = 0
+        self.num_descendents: int = 0
 
     def __str__(self):
         s = str(self.val) if self.val is not None else '<Empty>'
@@ -52,8 +53,7 @@ class AvlTreeNode(Collection, Generic[T]):
         return str(self)
     
     def __len__(self):
-        # return the number of descendents
-        return sum(1 for _ in self)
+        return self.num_descendents + int(self.val is not None)
 
     def __iter__(self):
         if self.val is not None:
@@ -179,8 +179,10 @@ class AvlTreeNode(Collection, Generic[T]):
         children = self.get_children()
         if children:
             self.height = max(n.height for n in children) + 1
+            self.num_descendents = sum(n.num_descendents for n in children) + len(children)
         else:
             self.height = 0
+            self.num_descendents = 0
 
     def __update_height(self):
         """Update the height of the tree from self up to the root."""
@@ -275,6 +277,12 @@ class AvlTreeNode(Collection, Generic[T]):
         """
         # the tree should always have a balance of -1, 0, or 1
         return (self.left._calculate_height() + 1 if self.left is not None else 0) - (self.right._calculate_height() + 1 if self.right is not None else 0)
+
+    def _calculate_len(self) -> int:
+        """Calculate the number of elements rooted at this node manually. This should only be used for testing since it
+        requires walking the tree.
+        """
+        return self.num_descendents + int(self.val is not None)
 
     def get_balance(self) -> int:
         """Get the balance of this node based on the height of its children. A balanced node should have a balance of
@@ -410,6 +418,7 @@ class AvlTreeNode(Collection, Generic[T]):
                 if new_child is None:
                     self.val = None
                     self.height = 0
+                    self.num_descendents = 0
                 else:
                     # just move the one child up and that becomes the new tree
                     # in this case, its height and balance is correct so no need to rebalance
@@ -604,6 +613,7 @@ class AvlTree(Collection, Generic[T]):
                     vals.add(val)
             # they should now have the same number of elements and when sorted should be the same
             assert(len(tree) == len(vals))
+            assert(len(tree) == tree._root._calculate_len())
             assert(list(tree.sorted()) == sorted(vals))
             none_parent_count = 0
             seen_vals: set[int] = set()
@@ -636,6 +646,7 @@ class AvlTree(Collection, Generic[T]):
                 assert(tree.delete(val))
             # after deleting everything, the tree should be empty
             assert(len(tree) == 0)
+            assert(tree._root._calculate_len() == 0)
             assert(tree._root.val is None)
             assert(list(tree) == [])
             assert(bool(tree) == False)
