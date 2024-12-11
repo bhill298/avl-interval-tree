@@ -362,6 +362,7 @@ class AvlTreeNode(Collection, Generic[T]):
         necessarily self) changed due to a rebalance (or None if the root did not change), and inserted is True if the
         value was inserted or False if the value was already present.
         """
+        assert(to_insert_val is not None)
         # if the tree is empty, insert it at the root
         if self.val is None:
             self.val = to_insert_val
@@ -394,6 +395,7 @@ class AvlTreeNode(Collection, Generic[T]):
         necessarily self) changed due to a rebalance (or None if the root did not change), and deleted is True if the
         value was deleted or False if the value was not present.
         """
+        assert(val is not None)
         if isinstance(val, AvlTreeNode):
             # already found the node, don't need to find it again
             to_delete_node = val
