@@ -2,7 +2,7 @@ import math
 import shutil
 from abc import abstractmethod
 from collections.abc import Collection, Iterable
-from typing import Any, cast, Generic, Optional, TypeVar, Protocol
+from typing import Any, cast, Generic, Optional, Protocol, TypeVar
 
 # https://stackoverflow.com/questions/17466218/what-are-the-differences-between-segment-trees-interval-trees-binary-indexed-t
 # A segment tree stores intervals and is optimized for "which of these intervals contains a given point" queries.
