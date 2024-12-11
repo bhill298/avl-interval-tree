@@ -106,8 +106,8 @@ class AvlTreeNode(Collection, Generic[T]):
         #  D E F G            B F H I
         #       H I          D E
         # changed height: A (self), C (r)
-        assert(self.right is not None)
-        r = self.right
+        # this rotation is invalid otherwise, so just assume it's not None
+        r = cast(AvlTreeNode[T], self.right)
         self.right = r.left
         if r.left is not None:
             r.left.parent = self
@@ -132,8 +132,8 @@ class AvlTreeNode(Collection, Generic[T]):
         #  D E F G            H I E C
         # H I                      F G
         # changed height: A (self), B (l)
-        assert(self.left is not None)
-        l = self.left
+        # this rotation is invalid otherwise, so just assume it's not None
+        l = cast(AvlTreeNode[T], self.left)
         self.left = l.right
         if l.right is not None:
             l.right.parent = self
@@ -152,8 +152,7 @@ class AvlTreeNode(Collection, Generic[T]):
         Returns the new root, replacing self from this rotation.
         """
         # Use if the tree is right heavy and its right subtree is left heavy.
-        assert(self.right is not None)
-        self.right.__rotate_r()
+        cast(AvlTreeNode[T], self.right).__rotate_r()
         return self.__rotate_l()
 
     def __rotate_rl(self) -> 'AvlTreeNode[T]':
@@ -164,8 +163,7 @@ class AvlTreeNode(Collection, Generic[T]):
         Returns the new root, replacing self from this rotation.
         """
         # use if the tree is left heavy and its left subtree is right heavy
-        assert(self.left is not None)
-        self.left.__rotate_l()
+        cast(AvlTreeNode[T], self.left).__rotate_l()
         return self.__rotate_r()
 
     def __get_descendent_successor(self) -> 'AvlTreeNode[T] | None':
@@ -374,7 +372,7 @@ class AvlTreeNode(Collection, Generic[T]):
             return (None, False)
         else:
             # if the parent node were None, we'd be inserting at the root; that should already be handled
-            assert(parent_node is not None)
+            parent_node = cast(AvlTreeNode[T], parent_node)
             to_insert = AvlTreeNode(to_insert_val)
             # the place where the node would be inserted is guaranteed to not have a child
             if to_insert_val < parent_node.val:
@@ -421,7 +419,7 @@ class AvlTreeNode(Collection, Generic[T]):
             # and thus valid for this position, and it is guaranteed to have at most one child
             pred = to_delete_node.__get_descendent_predecessor()
             # this must be true since we have a left child
-            assert(pred is not None)
+            pred = cast(AvlTreeNode[T], pred)
             pred_val = pred.val
             # recursively delete the predecessor; since it only has one child at most, will not hit this case again
             new_root, _ = self.delete(pred)
@@ -462,15 +460,20 @@ class AvlTreeNode(Collection, Generic[T]):
         """Print the tree to command line."""
         if max_width is None:
             max_width = shutil.get_terminal_size((120, 24)).columns
+        MIN_WIDTH = 8
+        if max_width < MIN_WIDTH:
+            print(f'Can\'t print tree; available width of {max_width} needs to be at least {MIN_WIDTH}')
+            return
         # sometimes there's some extra space written off the end of a line, not sure why
         max_width -= 1
-        assert(max_width >= 7)
         if self.val is None:
             print(str(self))
         else:
             TRUNCATE_TEXT = '..'
             ARROW_CHARS: tuple[str, str] = ('/', '\\')
-            assert(min_chars_per_node >= len(TRUNCATE_TEXT))
+            if min_chars_per_node < len(TRUNCATE_TEXT):
+                print(f'Can\'t print tree; min chars per node {min_chars_per_node} needs to be at least {len(TRUNCATE_TEXT)}')
+                return
             # in order from left to right; each level has 2^n (where the first is 0) entries
             next_level : list[AvlTreeNode[T] | None] = [self]
             current_level = 0
