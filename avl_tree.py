@@ -614,6 +614,7 @@ class AvlTree(Collection, Generic[T]):
             # they should now have the same number of elements and when sorted should be the same
             assert(len(tree) == len(vals))
             assert(len(tree) == tree._root._calculate_len())
+            # test sorting
             assert(list(tree.sorted()) == sorted(vals))
             none_parent_count = 0
             seen_vals: set[int] = set()
@@ -630,6 +631,10 @@ class AvlTree(Collection, Generic[T]):
                 # if the tree is not empty, then no value should be None and there should be no duplicates
                 assert(el.val is not None)
                 assert(el.val not in seen_vals)
+                # the length of each node should be correct
+                assert(len(el) == el._calculate_len())
+                # the height of each node should be correct
+                assert(el.height == el._calculate_height())
                 seen_vals.add(el.val)
             # there should exactly one element with no parent (the root)
             # also have to check manually in the empty case since there is nothing to iterate over
