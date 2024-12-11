@@ -282,7 +282,7 @@ class AvlTreeNode(Collection, Generic[T]):
         """Calculate the number of elements rooted at this node manually. This should only be used for testing since it
         requires walking the tree.
         """
-        return self.num_descendents + int(self.val is not None)
+        return sum(1 for _ in self)
 
     def get_balance(self) -> int:
         """Get the balance of this node based on the height of its children. A balanced node should have a balance of
