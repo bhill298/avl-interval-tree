@@ -574,6 +574,10 @@ class AvlTree(Collection, Generic[T]):
         """Trees are equal if they have the same contents."""
         return self._root == other.root
     
+    def clear(self):
+        """Removes all elements from the tree."""
+        self._root = AvlTreeNode()
+
     def sorted(self) -> Iterable[T]:
         """Return a sorted iterator over the values in the tree."""
         for node in self._root.sorted():
