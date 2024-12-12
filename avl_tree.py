@@ -696,9 +696,10 @@ class AvlTree(Collection, Generic[T]):
             assert(list(tree) == [])
             assert(bool(tree) == False)
         end_time = time.time()
+        total_time = end_time - start_time
         if print_time:
             print(f'Test successful with {iters} iterations and {iters_per_iter} steps per iteration')
-            print(f'Average time of {((end_time - start_time) / iters):.2f}s per iteration')
+            print(f'Total time of {total_time:.2f}s and average time of {(total_time / iters):.2f}s per iteration')
 
 
 if __name__ == '__main__':
