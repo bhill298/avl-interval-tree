@@ -551,7 +551,7 @@ class AvlTree(Collection, Generic[T]):
 
     def __eq__(self, other):
         """Trees are equal if they have the same contents."""
-        return self._root == other.root
+        return self._root == other._root
     
     def clear(self):
         """Removes all elements from the tree."""
