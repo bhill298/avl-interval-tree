@@ -54,6 +54,8 @@ class AvlTreeNode(Collection, Generic[T]):
     
     def __eq__(self, other):
         # they are equal if they have the same values and are the same length (need not have the same tree structure)
+        if not isinstance(other, AvlTreeNode):
+            return False
         try:
             for selfi, otheri in zip(self.sorted(), other.sorted(), strict=True):
                 if selfi.val != otheri.val:
@@ -551,6 +553,8 @@ class AvlTree(Collection, Generic[T]):
 
     def __eq__(self, other):
         """Trees are equal if they have the same contents."""
+        if not isinstance(other, AvlTree):
+            return False
         return self._root == other._root
     
     def clear(self):
