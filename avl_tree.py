@@ -460,7 +460,7 @@ class AvlTreeNode(Collection, Generic[T]):
             if min_chars_per_node < len(TRUNCATE_TEXT):
                 print(f'Can\'t print tree; min chars per node {min_chars_per_node} needs to be at least {len(TRUNCATE_TEXT)}')
                 return
-            # in order from left to right; each level has 2^n (where the first is 0) entries
+            # in order from left to right; each level has 2^n (where the first is n=0) entries
             next_level : list[AvlTreeNode[T] | None] = [self]
             current_level = 0
             while any(next_level):
@@ -481,7 +481,7 @@ class AvlTreeNode(Collection, Generic[T]):
                 to_print = []
                 accumulated_space = 0.0
                 for idx, node in enumerate(this_level):
-                    # don't an the extra space for the last node
+                    # don't add the extra space for the last node
                     space_after = '' if idx == len(this_level) - 1 else ' '
                     if accumulated_space >= 1.0:
                         extra_space = 1
