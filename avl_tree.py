@@ -2,7 +2,7 @@ import math
 import shutil
 from abc import abstractmethod
 from collections.abc import Collection, Iterable
-from typing import Any, cast, Generic, Optional, Protocol, TypeVar
+from typing import Any, cast, Generic, Optional, Protocol, Type, TypeVar
 
 
 class ComparableTreeDataType(Protocol):
@@ -519,18 +519,20 @@ class AvlTreeNode(Collection, Generic[T]):
                 current_level += 1
 
 
-class AvlTree(Collection, Generic[T]):
+class GenericAvlTree(Collection, Generic[T]):
+    """Generic avl tree; can construct with a node type or override methods as desired to specify a node type."""
     __slots__ = ('_root')
 
-    def __init__(self, init: Optional[Iterable[T]] = None):
-        """Initialize the tree, optionally with an iterable of values to initially insert."""
+    def __init__(self, tree_node_cls: Type[AvlTreeNode], init: Optional[Iterable[T]] = None):
+        """Initialize the tree (with a node type), optionally with an iterable of values to initially insert."""
+        self._root: AvlTreeNode[T]
         if init:
             first, *rest = init
-            self._root = AvlTreeNode(first)
+            self._root = tree_node_cls(first)
             for val in rest:
                 self.insert(val)
         else:
-            self._root = AvlTreeNode()
+            self._root = tree_node_cls()
 
     def __len__(self):
         """The length of a tree is the number of values, and it is stored in the tree, so calculating it is a constant
@@ -543,7 +545,7 @@ class AvlTree(Collection, Generic[T]):
             yield node.val
     
     def __str__(self):
-        return f'AvlTree({str(list(self))})'
+        return f'{self.__class__.__name__}({str(list(self))})'
     
     def __repr__(self):
         return str(self)
@@ -553,7 +555,7 @@ class AvlTree(Collection, Generic[T]):
 
     def __eq__(self, other):
         """Trees are equal if they have the same contents."""
-        if not isinstance(other, AvlTree):
+        if not isinstance(other, GenericAvlTree):
             return False
         return self._root == other._root
     
@@ -608,14 +610,14 @@ class AvlTree(Collection, Generic[T]):
         self._root.print(*args, **kwargs)
 
     @staticmethod
-    def test(iters=1, iters_per_iter=1000, delete_prob=.1, print_time=True, print_tree=False):
+    def test(tree_node_cls: Type[AvlTreeNode], iters=1, iters_per_iter=1000, delete_prob=.1, print_time=True, print_tree=False):
         """Run tests. Will throw an AssertionError if there is an error."""
         import random
         import time
         start_time = time.time()
         for _ in range(iters):
             vals: set[int] = set()
-            tree: AvlTree[int] = AvlTree()
+            tree: GenericAvlTree[int] = GenericAvlTree(tree_node_cls)
             # the tree should start out empty
             assert(len(tree) == 0)
             assert(tree._root.val is None)
@@ -683,6 +685,17 @@ class AvlTree(Collection, Generic[T]):
         if print_time:
             print(f'Test successful with {iters} iterations and {iters_per_iter} steps per iteration')
             print(f'Total time of {total_time:.2f}s and average time of {(total_time / iters):.2f}s per iteration')
+
+
+class AvlTree(GenericAvlTree):
+    """Avl tree using AvlTreeNode."""
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(AvlTreeNode, *args, **kwargs)
+
+    @staticmethod
+    def test(*args, **kwargs):
+        super(AvlTree, AvlTree).test(AvlTreeNode, *args, **kwargs)
 
 
 if __name__ == '__main__':
