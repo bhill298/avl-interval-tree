@@ -15,6 +15,12 @@ T = TypeVar('T', bound=ComparableTreeDataType)
 
 class AvlTreeNode(Collection, Generic[T]):
     __slots__ = 'val', 'left', 'right', 'parent', 'height', 'num_descendents'
+
+    def _init_node(self):
+        """Override this to provide additional node initialization. This should be what additional logic __init__ needs,
+        to also be used when an empty root has a value added.
+        """
+        pass
     
     def __init__(self, init: Optional[T] = None):
         # only none for the root in an empty tree
@@ -27,15 +33,16 @@ class AvlTreeNode(Collection, Generic[T]):
         # height is max child edge count for any path; 0 if no children
         self.height: int = 0
         self.num_descendents: int = 0
+        self._init_node()
 
-    def __str__(self):
+    def __str__(self) -> str:
         s = str(self.val) if self.val is not None else '<Empty>'
         return f'{self.__class__.__name__}({s})'
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
     
-    def __len__(self):
+    def __len__(self) -> int:
         # the len of the tree is its number of descendents + 1 unless the value is None
         # notably, the value should only ever be None if the length is 0 and there are no descendents
         return self.num_descendents + int(self.val is not None)
@@ -49,10 +56,10 @@ class AvlTreeNode(Collection, Generic[T]):
                 node.get_children()
                 stack.extend(node.get_children())
     
-    def __contains__(self, x: T):
-        return self.search(x)
+    def __contains__(self, x: T) -> bool:
+        return self.search(x)[0] is not None
     
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         # they are equal if they have the same values and are the same length (need not have the same tree structure)
         if not isinstance(other, AvlTreeNode):
             return False
@@ -284,12 +291,6 @@ class AvlTreeNode(Collection, Generic[T]):
         requires walking the tree.
         """
         return sum(1 for _ in self)
-
-    def _init_node(self):
-        """Override this to provide additional node initialization. This should be what additional logic __init__ needs,
-        to also be used when an empty root has a value added.
-        """
-        pass
 
     def get_balance(self) -> int:
         """Get the balance of this node based on the height of its children. A balanced node should have a balance of
@@ -545,7 +546,7 @@ class GenericAvlTree(Collection, Generic[T]):
         else:
             self._root = tree_node_cls()
 
-    def __len__(self):
+    def __len__(self) -> int:
         """The length of a tree is the number of values, and it is stored in the tree, so calculating it is a constant
         time operation.
         """
@@ -553,18 +554,18 @@ class GenericAvlTree(Collection, Generic[T]):
 
     def __iter__(self):
         for node in self._root:
-            yield node.val
+            yield cast(T, node.val)
     
-    def __str__(self):
+    def __str__(self) -> str:
         return f'{self.__class__.__name__}({str(list(self))})'
     
-    def __repr__(self):
+    def __repr__(self) -> str:
         return str(self)
     
-    def __contains__(self, x: T):
+    def __contains__(self, x: T) -> bool:
         return x in self._root
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         """Trees are equal if they have the same contents."""
         if not isinstance(other, GenericAvlTree):
             return False
@@ -691,6 +692,8 @@ class GenericAvlTree(Collection, Generic[T]):
             assert(tree._root.val is None)
             assert(list(tree) == [])
             assert(bool(tree) == False)
+            # test a random value (should be False)
+            assert(5 not in tree)
         end_time = time.time()
         total_time = end_time - start_time
         if print_time:
