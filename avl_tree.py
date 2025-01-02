@@ -30,7 +30,7 @@ class AvlTreeNode(Collection, Generic[T]):
 
     def __str__(self):
         s = str(self.val) if self.val is not None else '<Empty>'
-        return f'AvlTreeNode({s})'
+        return f'{self.__class__.__name__}({s})'
 
     def __repr__(self):
         return str(self)
@@ -342,22 +342,22 @@ class AvlTreeNode(Collection, Generic[T]):
         # node not found
         return (None, parent_node)
 
-    def insert(self, to_insert_val: T) -> tuple['AvlTreeNode[T] | None', bool]:
+    def insert(self, to_insert_val: T) -> tuple['AvlTreeNode[T] | None', 'AvlTreeNode[T]', bool]:
         """Insert a value into the tree. If the tree is empty, insert it at the root.
 
-        returns (new_root, inserted), where new_root is the new root if the root (as in the root of the whole tree not
-        necessarily self) changed due to a rebalance (or None if the root did not change), and inserted is True if the
-        value was inserted or False if the value was already present.
+        returns (new_root, node, inserted), where new_root is the new root if the root (as in the root of the whole tree
+        not necessarily self) changed due to a rebalance (or None if the root did not change), node is the inserted
+        node, and inserted is True if the value was inserted or False if the value was already present.
         """
         assert(to_insert_val is not None)
         # if the tree is empty, insert it at the root
         if self.val is None:
             self.val = to_insert_val
-            return (None, True)
+            return (None, self, True)
         node, parent_node = self.search(to_insert_val)
         if node is not None:
             # node already exists in the tree
-            return (None, False)
+            return (None, node, False)
         else:
             # if the parent node were None, we'd be inserting at the root; that should already be handled
             parent_node = cast(AvlTreeNode[T], parent_node)
@@ -372,7 +372,7 @@ class AvlTreeNode(Collection, Generic[T]):
             # start searching for imbalance at the parent since the child will not have any imbalance
             new_root = parent_node.__fix_tree_balance(rotate_once=True)
             # the new root may be unchanged
-            return (new_root, True)
+            return (new_root, to_insert, True)
 
     def delete(self, val: 'T | AvlTreeNode[T]') -> tuple['AvlTreeNode[T] | None', bool]:
         """Find a node and delete it from the tree. Return the new root (possibly the same), and True if a node was
@@ -574,7 +574,7 @@ class GenericAvlTree(Collection, Generic[T]):
 
     def insert(self, val: T):
         """Insert a value into the tree. Return True if the value was inserted, False if it was already present."""
-        node, inserted = self._root.insert(val)
+        node, _, inserted = self._root.insert(val)
         if node is not None:
             self._root = node
         return inserted
