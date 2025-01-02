@@ -242,12 +242,7 @@ class AvlTreeNode(Collection, Generic[T]):
         # no rotation occured
         return new_root
 
-    def _update_node_height(self: 'AvlTreeNode[T]', callback: Callable[['AvlTreeNode[T]', tuple['AvlTreeNode[T]', ...]], None] = lambda x, y: None):
-        """Quickly update this node's height by looking at the heights of its children. Assumes child heights are valid.
-        A callback can be provided for subclasses to update more values, taking each node and list of its children.
-        """
-        children = self.get_children()
-        callback(self, children)
+    def _update_node_metadata(self, children: tuple['AvlTreeNode[T]', ...]):
         if children:
             # the height of this node is 1 + the max height of its children
             self.height = max(n.height for n in children) + 1
@@ -256,6 +251,12 @@ class AvlTreeNode(Collection, Generic[T]):
         else:
             self.height = 0
             self.num_descendents = 0
+
+    def _update_node_height(self: 'AvlTreeNode[T]'):
+        """Quickly update this node's height by looking at the heights of its children. Assumes child heights are valid.
+        """
+        children = self.get_children()
+        self._update_node_metadata(children)
 
     def _calculate_height(self) -> int:
         """Returns max depth of descendents of this node as the number of child edges. If this is a leaf, the depth is

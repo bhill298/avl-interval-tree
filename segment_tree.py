@@ -27,10 +27,6 @@ class IntervalTreeNode(AvlTreeNode, Generic[T]):
         self.max_upper_value = None
 
     @staticmethod
-    def __callback(node, children):
-        node.max_upper_value = max(i.max_upper_value for i in children + (node,) if i.max_upper_value is not None)
-
-    @staticmethod
     def __overlapswith(i1: tuple[T, T], i2: tuple[T, T]) -> bool:
         if i1[0] == i1[1] or i2[0] == i2[1]:
             # one or both of the intervals is a point (as in start and end are equal)
@@ -38,6 +34,12 @@ class IntervalTreeNode(AvlTreeNode, Generic[T]):
         else:
             # interval
             return i1[0] < i2[1] and i1[1] > i2[0]
+
+    def _update_node_metadata(self, children):
+        super()._update_node_metadata(children)
+        node = cast(IntervalTreeNode, self)
+        children = cast(tuple[IntervalTreeNode, ...], children)
+        node.max_upper_value = max(i.max_upper_value for i in children + (node,) if i.max_upper_value is not None)
 
     def insert(self, to_insert_val: tuple[T, T, Any], *args, **kwargs):
         assert(to_insert_val[1] >= to_insert_val[0])
@@ -71,9 +73,6 @@ class IntervalTreeNode(AvlTreeNode, Generic[T]):
             if node.right is not None:
                 # search right children
                 to_search.append(node.right)
-
-    def _update_node_height(self, *args, **kwargs):
-        return super()._update_node_height(self.__callback, *args, **kwargs)
         
 
 class IntervalTree(GenericAvlTree, Generic[T]):
