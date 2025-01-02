@@ -1,5 +1,6 @@
 from abc import abstractmethod
 from collections.abc import Iterable
+from itertools import chain
 from typing import Any, cast, Generic, Optional, Protocol, TypeVar
 from avl_tree import AvlTreeNode, GenericAvlTree
 
@@ -43,7 +44,10 @@ class IntervalTreeNode(AvlTreeNode, Generic[T]):
         super()._update_node_metadata(children)
         node = cast(IntervalTreeNode, self)
         children = cast(tuple[IntervalTreeNode, ...], children)
-        node.max_upper_value = max(i.max_upper_value for i in children + (node,) if i.max_upper_value is not None)
+        # this should never fire with an empty root (the only time max_upper_value will ever be None)
+        # the new max upper value is the max of child upper values and our own max interval
+        # note that we recheck our max interval and not our current max upper value in case of rotations or reinsertion
+        node.max_upper_value = max(chain((cast(T, i.max_upper_value) for i in children), [cast(tuple, node.val)[1]]))
 
     def insert(self, to_insert_val: tuple[T, T, Any], *args, **kwargs):
         assert(to_insert_val[1] >= to_insert_val[0])
@@ -133,7 +137,7 @@ class IntervalTree(GenericAvlTree, Generic[T]):
         tree = IntervalTree()
         for d in data:
             tree.insert(d[0], d[1], d[2])
-        tree.print(node_to_str=lambda x: f'[{hex(x.val[0])}, {hex(x.val[1])}); {hex(x.max_upper_value)}; {x.data}')
+            tree.print(node_to_str=lambda x: f'[{hex(x.val[0])}, {hex(x.val[1])}); {hex(x.max_upper_value)}; {x.data}')
         for test in tests:
             val = None
             vals = list(tree.search(test[0]))
