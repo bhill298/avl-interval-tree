@@ -104,7 +104,7 @@ class IntervalTree(GenericAvlTree, Generic[T]):
         return super().extend(vals)
 
     @staticmethod
-    def test(*args, **kwargs):
+    def test():
         STRIDE = 0x1000
         # [start, end), value
         data = [(STRIDE * 0, STRIDE * 5, 0x0),
@@ -130,6 +130,7 @@ class IntervalTree(GenericAvlTree, Generic[T]):
         tree = IntervalTree()
         for d in data:
             tree.insert(d[0], d[1], d[2])
+        tree.print(node_to_str=lambda x: f'[{hex(x.val[0])}, {hex(x.val[1])}); {x.max_upper_value}; {x.data}')
         for test in tests:
             val = None
             vals = list(tree.search(test[0]))

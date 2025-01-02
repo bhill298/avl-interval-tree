@@ -445,7 +445,7 @@ class AvlTreeNode(Collection, Generic[T]):
                 new_root = to_delete_node.parent.__fix_tree_balance(rotate_once=False)
         return (new_root, True)
 
-    def print(self, max_width=None, min_chars_per_node=3, empty_node_text='<>'):
+    def print(self, max_width=None, min_chars_per_node=3, empty_node_text='<>', node_to_str=lambda x: str(x.val)):
         """Print the tree to command line."""
         if max_width is None:
             max_width = shutil.get_terminal_size((120, 24)).columns
@@ -495,7 +495,7 @@ class AvlTreeNode(Collection, Generic[T]):
                         node_text = empty_node_text
                         next_level.extend([None, None])
                     else:
-                        node_text = str(node.val)
+                        node_text = node_to_str(node)
                         next_level.extend((node.left, node.right))
                     # truncate node text that is too long
                     if len(node_text) > space_per_node:
