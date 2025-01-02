@@ -1,11 +1,26 @@
-from typing import Any, cast, Generic, Optional, Protocol, Type, TypeVar
+from typing import Any, Callable, cast, Generic, Optional, Protocol, Type, TypeVar
 from avl_tree import AvlTreeNode, GenericAvlTree, T
 
 # https://en.wikipedia.org/wiki/Interval_tree#Augmented_tree
 
 
 class IntervalTreeNode(AvlTreeNode, Generic[T]):
-    pass
+    __slots__ = 'max_upper_value',
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.max_upper_value = 0
+
+    def __str__(self):
+        s = str(self.val) if self.val is not None else '<Empty>'
+        return f'IntervalTreeNode({s})'
+
+    @staticmethod
+    def __callback(node, children):
+        node.max_upper_value = max(i.max_upper_value for i in children + (node,))
+
+    def _update_node_height(self, *args, **kwargs):
+        return super()._update_node_height(self.__callback, *args, **kwargs)
         
 
 class IntervalTree(GenericAvlTree):

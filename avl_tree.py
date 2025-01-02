@@ -2,7 +2,7 @@ import math
 import shutil
 from abc import abstractmethod
 from collections.abc import Collection, Iterable
-from typing import Any, cast, Generic, Optional, Protocol, Type, TypeVar
+from typing import Any, Callable, cast, Generic, Optional, Protocol, Type, TypeVar
 
 
 class ComparableTreeDataType(Protocol):
@@ -168,23 +168,11 @@ class AvlTreeNode(Collection, Generic[T]):
                 child = child.right
         return child
 
-    def __update_node_height(self: 'AvlTreeNode[T]'):
-        """Quickly update this node's height by looking at the heights of its children. Assumes child heights are valid."""
-        children = self.get_children()
-        if children:
-            # the height of this node is 1 + the max height of its children
-            self.height = max(n.height for n in children) + 1
-            # its number of descendents is the number of descendents of its children + its number of children
-            self.num_descendents = sum(n.num_descendents for n in children) + len(children)
-        else:
-            self.height = 0
-            self.num_descendents = 0
-
     def __update_height(self):
         """Update the height of the tree from self up to the root."""
         node = self
         while node is not None:
-            node.__update_node_height()
+            node._update_node_height()
             node = node.parent
 
     def __fix_balance(self) -> tuple['AvlTreeNode[T]', bool]:
@@ -237,7 +225,7 @@ class AvlTreeNode(Collection, Generic[T]):
             # update height first so the fix balance operation has the right height
             # but after one rotation, skip this since heights have been updated already by the rotation operation
             if not has_rotated:
-                node.__update_node_height()
+                node._update_node_height()
             # need to check for root before rotation
             is_root = node.parent is None
             rotated_new_root, rotated = node.__fix_balance()
@@ -253,6 +241,21 @@ class AvlTreeNode(Collection, Generic[T]):
             node = node.parent
         # no rotation occured
         return new_root
+
+    def _update_node_height(self: 'AvlTreeNode[T]', callback: Callable[['AvlTreeNode[T]', tuple['AvlTreeNode[T]', ...]], None] = lambda x, y: None):
+        """Quickly update this node's height by looking at the heights of its children. Assumes child heights are valid.
+        A callback can be provided for subclasses to update more values, taking each node and list of its children.
+        """
+        children = self.get_children()
+        callback(self, children)
+        if children:
+            # the height of this node is 1 + the max height of its children
+            self.height = max(n.height for n in children) + 1
+            # its number of descendents is the number of descendents of its children + its number of children
+            self.num_descendents = sum(n.num_descendents for n in children) + len(children)
+        else:
+            self.height = 0
+            self.num_descendents = 0
 
     def _calculate_height(self) -> int:
         """Returns max depth of descendents of this node as the number of child edges. If this is a leaf, the depth is
@@ -358,7 +361,7 @@ class AvlTreeNode(Collection, Generic[T]):
         else:
             # if the parent node were None, we'd be inserting at the root; that should already be handled
             parent_node = cast(AvlTreeNode[T], parent_node)
-            to_insert = AvlTreeNode(to_insert_val)
+            to_insert = self.__class__(to_insert_val)
             # the place where the node would be inserted is guaranteed to not have a child
             if to_insert_val < parent_node.val:
                 parent_node.left = to_insert
@@ -561,7 +564,7 @@ class GenericAvlTree(Collection, Generic[T]):
     
     def clear(self):
         """Removes all elements from the tree."""
-        self._root = AvlTreeNode()
+        self._root = self._root.__class__()
 
     def sorted(self) -> Iterable[T]:
         """Return a sorted iterator over the values in the tree."""
