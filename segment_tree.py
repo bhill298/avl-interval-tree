@@ -1,7 +1,9 @@
+import time
 from abc import abstractmethod
 from collections.abc import Iterable
 from itertools import chain
 from typing import Any, cast, Generic, Optional, Protocol, TypeVar
+
 from avl_tree import AvlTreeNode, GenericAvlTree
 
 # https://en.wikipedia.org/wiki/Interval_tree#Augmented_tree
@@ -16,7 +18,6 @@ class IntervalDataType(Protocol):
 
 T = TypeVar('T', bound=IntervalDataType)
 
-# TODO: test fails when there is a false match on the exclusive end of an interval
 class IntervalTreeNode(AvlTreeNode, Generic[T]):
     __slots__ = 'max_upper_value', 'data'
 
@@ -38,12 +39,19 @@ class IntervalTreeNode(AvlTreeNode, Generic[T]):
         self._init_node()
 
     @staticmethod
+    # TODO: make this more efficient
     def __overlapswith(i1: tuple[T, T], i2: tuple[T, T]) -> bool:
-        if i1[0] == i1[1] or i2[0] == i2[1]:
-            # one or both of the intervals is a point (as in start and end are equal)
-            return i1[0] <= i2[1] and i1[1] >= i2[0]
+        if i1[0] == i1[1] and i2[0] == i2[1]:
+            # both intervals at a point
+            return i1[0] == i2[0]
+        elif i1[0] == i1[1]:
+            # i1 is at a point
+            return i1[0] >= i2[0] and i1[0] < i2[1]
+        elif i2[0] == i2[1]:
+            # i2 is at a point
+            return i2[0] >= i1[0] and i2[0] < i1[1]
         else:
-            # interval
+            # both are intervals
             return i1[0] < i2[1] and i1[1] > i2[0]
 
     def _update_node_metadata(self, children):
@@ -116,7 +124,7 @@ class IntervalTree(GenericAvlTree, Generic[T]):
         return super().extend(vals)
 
     @staticmethod
-    def test():
+    def test(print_time=True, print_ranges=False, print_tree=False):
         STRIDE = 0x1000
         # [start, end), value
         data = [(STRIDE * 0, STRIDE * 5, 0x0),
@@ -131,6 +139,8 @@ class IntervalTree(GenericAvlTree, Generic[T]):
             (STRIDE * 0, (0x0,)),
             # contains 0x0, 0x5, 0x20
             (int(STRIDE * 3.5), (0x0, 0x5, 0x20)),
+            # same as above but in range qeury form
+            ((int(STRIDE * 3.5), int(STRIDE * 3.5)), (0x0, 0x5, 0x20)),
             # contains 0x0, 0x5
             (STRIDE * 4, (0x0, 0x5)),
             # contains 0x5, 0x1
@@ -139,18 +149,35 @@ class IntervalTree(GenericAvlTree, Generic[T]):
             ((STRIDE * 102) - 1, (0x2,)),
             # contains 0x3
             (STRIDE * 21, (0x3,)),
+            # range query
+            ((STRIDE * 0, STRIDE * 20), (0x0, 0x5, 0x20, 0x1)),
+            # range query
+            ((STRIDE * 20, (STRIDE * 100) + 1), (0x3, 0x2)),
             # contains nothing
-            ((STRIDE * 1000) - 1, (None,)),
+            ((STRIDE * 1000) - 1, None),
         ]
+        start_time = time.time()
         tree = IntervalTree()
+        added = 0
         for d in data:
             tree.insert(d[0], d[1], d[2])
-            tree.print(node_to_str=lambda x: f'[{hex(x.val[0])}, {hex(x.val[1])}); {hex(x.max_upper_value)}; {x.data}')
+            added += 1
+            if print_tree:
+                tree.print(node_to_str=lambda x: f'[{hex(x.val[0])}, {hex(x.val[1])}); {hex(x.max_upper_value)}; {x.data}')
+            assert(len(tree) == added)
         for test in tests:
             val = None
-            vals = list(tree.search(test[0]))
-            print(hex(test[0]))
-            print([f'[{hex(i[0][0])}, {hex(i[0][1])}); {i[1]}' for i in vals])
+            if isinstance(test[0], tuple):
+                # range query
+                vals = list(tree.search(test[0][0], test[0][1]))
+                if print_ranges:
+                    print(f'[{hex(test[0][0])}, {hex(test[0][1])})')
+            else:
+                vals = list(tree.search(test[0]))
+                if print_ranges:
+                    print(hex(test[0]))
+            if print_ranges:
+                print([f'[{hex(i[0][0])}, {hex(i[0][1])}); {i[1]}' for i in vals])
             if vals:
                 val = [v[1] for v in vals]
             else:
@@ -161,6 +188,17 @@ class IntervalTree(GenericAvlTree, Generic[T]):
                 # strict asserts they are the same length
                 for i1, i2 in zip(sorted(val), sorted(test[1]), strict=True):
                     assert(i1 == i2)
+        # now delete everything
+        deleted = 0
+        for d in data:
+            tree.delete(d[0], d[1])
+            deleted += 1
+            if print_tree:
+                tree.print(node_to_str=lambda x: f'[{hex(x.val[0])}, {hex(x.val[1])}); {hex(x.max_upper_value)}; {x.data}')
+            assert(len(tree) == len(data) - deleted)
+        total_time = time.time() - start_time
+        if print_time:
+            print(f'Tests passed with total time of {total_time:.2f}s')
 
 
 if __name__ == '__main__':
