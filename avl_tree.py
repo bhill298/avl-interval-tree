@@ -285,6 +285,12 @@ class AvlTreeNode(Collection, Generic[T]):
         """
         return sum(1 for _ in self)
 
+    def _init_node(self):
+        """Override this to provide additional node initialization. This should be what additional logic __init__ needs,
+        to also be used when an empty root has a value added.
+        """
+        pass
+
     def get_balance(self) -> int:
         """Get the balance of this node based on the height of its children. A balanced node should have a balance of
         -1, 0, or 1. The convention is that balance is left height - right height. This means a positive balance is left
@@ -354,6 +360,7 @@ class AvlTreeNode(Collection, Generic[T]):
         # if the tree is empty, insert it at the root
         if self.val is None:
             self.val = to_insert_val
+            self._init_node()
             return (None, self, True)
         node, parent_node = self.search(to_insert_val)
         if node is not None:

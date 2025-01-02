@@ -16,20 +16,26 @@ class IntervalDataType(Protocol):
 
 T = TypeVar('T', bound=IntervalDataType)
 
-# TODO: do interval operations
-# TODO: get tests passing
+# TODO: test fails when there is a false match on the exclusive end of an interval
 class IntervalTreeNode(AvlTreeNode, Generic[T]):
     __slots__ = 'max_upper_value', 'data'
+
+    def _init_node(self):
+        # The value initially contains both the interval and the data in a single tuple. This needs to be unpacked.
+        dat = cast(tuple[T, T, Any], self.val)
+        try:
+            self.max_upper_value = dat[1]
+            self.val = dat[:2]
+            self.data = dat[2]
+        except TypeError:
+            # self.val should only ever be None for initial root creation, so handle this case in an exception
+            self.max_upper_value = None
+            self.data: Any = None
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.val: None | tuple[T, T]
-        # this should only ever be None for initial root creation, otherwise every value should have an interval
-        try:
-            self.max_upper_value = cast(tuple[T, T], self.val)[1]
-        except TypeError:
-            self.max_upper_value = None
-        self.data: Any = None
+        self._init_node()
 
     @staticmethod
     def __overlapswith(i1: tuple[T, T], i2: tuple[T, T]) -> bool:
@@ -53,7 +59,6 @@ class IntervalTreeNode(AvlTreeNode, Generic[T]):
         assert(to_insert_val[1] >= to_insert_val[0])
         new_root, node, inserted = super().insert(to_insert_val, *args, **kwargs)
         node = cast(IntervalTreeNode, node)
-        node.max_upper_value = cast(tuple, node.val)[1]
         # this will update the node if it already existed
         node.data = to_insert_val[2]
         return new_root, node, inserted
@@ -116,6 +121,7 @@ class IntervalTree(GenericAvlTree, Generic[T]):
         # [start, end), value
         data = [(STRIDE * 0, STRIDE * 5, 0x0),
                 (STRIDE * 3, STRIDE * 12, 0x5),
+                (STRIDE * 3, STRIDE * 4, 0x20),
                 (STRIDE * 5, STRIDE * 6, 0x1),
                 (STRIDE * 100, STRIDE * 102, 0x2),
                 (STRIDE * 20, STRIDE * 22, 0x3),
@@ -123,6 +129,8 @@ class IntervalTree(GenericAvlTree, Generic[T]):
         tests = [
             # contains 0x0
             (STRIDE * 0, (0x0,)),
+            # contains 0x0, 0x5, 0x20
+            (int(STRIDE * 3.5), (0x0, 0x5, 0x20)),
             # contains 0x0, 0x5
             (STRIDE * 4, (0x0, 0x5)),
             # contains 0x5, 0x1
@@ -141,6 +149,8 @@ class IntervalTree(GenericAvlTree, Generic[T]):
         for test in tests:
             val = None
             vals = list(tree.search(test[0]))
+            print(hex(test[0]))
+            print([f'[{hex(i[0][0])}, {hex(i[0][1])}); {i[1]}' for i in vals])
             if vals:
                 val = [v[1] for v in vals]
             else:
@@ -148,12 +158,9 @@ class IntervalTree(GenericAvlTree, Generic[T]):
             if val is None:
                 assert(test[1] is None)
             else:
-                try:
-                    for i1, i2 in zip(sorted(val), sorted(test[1]), strict=True):
-                        assert(i1 == i2)
-                except ValueError:
-                    # they are not the same length
-                    assert(False)
+                # strict asserts they are the same length
+                for i1, i2 in zip(sorted(val), sorted(test[1]), strict=True):
+                    assert(i1 == i2)
 
 
 if __name__ == '__main__':
