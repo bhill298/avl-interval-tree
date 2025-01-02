@@ -589,7 +589,7 @@ class GenericAvlTree(Collection, Generic[T]):
         return inserted
 
     def delete(self, val: T):
-        """Insert a value from the tree. Return True if the value was deleted, False if it was not present."""
+        """Insert a value from into the tree. Return True if the value was deleted, False if it was not present."""
         node, deleted = self._root.delete(val)
         if node is not None:
             self._root = node
