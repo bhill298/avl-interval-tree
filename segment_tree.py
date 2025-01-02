@@ -7,8 +7,6 @@ from typing import Any, cast, Generic, Optional, Protocol, TypeVar
 
 from avl_tree import AvlTreeNode, GenericAvlTree
 
-# https://en.wikipedia.org/wiki/Interval_tree#Augmented_tree
-
 
 class IntervalDataType(Protocol):
     @abstractmethod
@@ -21,10 +19,12 @@ T = TypeVar('T', bound=IntervalDataType)
 _opsgt = [operator.gt, operator.ge]
 _opslt = [operator.lt, operator.le]
 
+
 class IntervalTreeNode(AvlTreeNode, Generic[T]):
     __slots__ = 'max_upper_value', 'data'
 
     def _init_node(self):
+        super()._init_node()
         # The value initially contains both the interval and the data in a single tuple. This needs to be unpacked.
         dat = cast(tuple[T, T, Any], self.val)
         try:
@@ -39,7 +39,23 @@ class IntervalTreeNode(AvlTreeNode, Generic[T]):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.val: None | tuple[T, T]
-        self._init_node()
+
+    def __contains__(self, val) -> bool:
+        """Returns True if the point or interval overlaps."""
+        return any(True for _ in self.interval_search(*val))
+
+    def __eq__(self, other) -> bool:
+        # they are equal if they have the same values and are the same length (need not have the same tree structure)
+        if not isinstance(other, IntervalTreeNode):
+            return False
+        try:
+            for selfi, otheri in zip(self.sorted(), other.sorted(), strict=True):
+                if selfi.val != otheri.val or cast(IntervalTreeNode, selfi).data != cast(IntervalTreeNode, otheri).data:
+                    return False
+        except ValueError:
+            # they are not the same length
+            return False
+        return True
 
     @staticmethod
     def __overlapswith(i1: tuple[T, T], i2: tuple[T, T]) -> bool:
@@ -64,28 +80,43 @@ class IntervalTreeNode(AvlTreeNode, Generic[T]):
         node.max_upper_value = max(chain((cast(T, i.max_upper_value) for i in children), [cast(tuple, node.val)[1]]))
 
     def insert(self, to_insert_val: tuple[T, T, Any], *args, **kwargs):
-        assert(to_insert_val[1] >= to_insert_val[0])
+        """Insert an interval and a data value associated with the interval in the form (min, max, data). A point can be
+        inserted by making min and max the same.
+        """
+        assert(to_insert_val[1] >= to_insert_val[0] and to_insert_val[2] is not None)
         new_root, node, inserted = super().insert(to_insert_val, *args, **kwargs)
         node = cast(IntervalTreeNode, node)
-        # this will update the node if it already existed
+        # this will update the node value if it already existed
         node.data = to_insert_val[2]
         return new_root, node, inserted
 
-    def interval_search(self, min: T, max: T) -> 'Iterable[IntervalTreeNode[T]]':
+    def interval_search(self, min: T, max: Optional[T] = None, exact: bool = False) -> 'Iterable[IntervalTreeNode[T]]':
+        """Returns an iterator over the matching nodes overlapping the range [min, max). Pass in a single value as min
+        to search for all intervals that a point overlaps with. exact determines if an interval has to match exactly
+        (and at most one interval will be returned in that case).
+        """
         # tree is empty
         if self.val is None:
             return
+        # point interval
+        if max is None:
+            max = min
         to_search: list[Any] = [self]
         while to_search:
             node = to_search.pop()
-            node_max_upper_value = node.max_upper_value
             # this needs to check if in range first before looking at the max upper value
             # there is an edge case where this node is a point interval where its max is equal to its point, in which
             # case it could be a valid overlap that would be skipped if the min if that same value
-            if self.__overlapswith((min, max), node.val):
-                # intervals / points overlap
-                yield node
-            if min >= node_max_upper_value:
+            if exact:
+                if node.val == (min, max):
+                    yield node
+                    # there can only be exactly one match
+                    return
+            else:
+                if self.__overlapswith((min, max), node.val):
+                    # intervals / points overlap
+                    yield node
+            if min >= node.max_upper_value:
                 # the start of this interval is greater than the end of this node and all children
                 continue
             if node.left is not None:
@@ -104,9 +135,6 @@ class IntervalTree(GenericAvlTree, Generic[T]):
         self._root: IntervalTreeNode
         super().__init__(IntervalTreeNode, *args, **kwargs)
 
-    def __contains__(self, min: T, max: T):
-        return (min, max) in self._root
-
     def sorted(self) -> Iterable[tuple[T, T]]:
         return super().sorted()
 
@@ -116,11 +144,14 @@ class IntervalTree(GenericAvlTree, Generic[T]):
     def delete(self, min: T, max: T):
         return super().delete((min, max))
 
-    def search(self, min: T, max: Optional[T] = None) -> Iterable[tuple[tuple[T, T], Any]]:
-        # intervals are in the form [min, max)
-        if max is None:
-            max = min
-        for el in self._root.interval_search(min, max):
+    def search(self, min: T, max: Optional[T] = None, exact: bool = False) -> Iterable[tuple[tuple[T, T], Any]]:
+        """Returns an iterator over the matching ranges and values overlapping the range [min, max). Pass in a single
+        value as min to search for all intervals that a point overlaps with. exact determines if an interval has to
+        match exactly (and at most one interval will be returned in that case).
+
+        The iterator produces values in the form ((min, max), data).
+        """
+        for el in self._root.interval_search(min, max, exact):
             yield (cast(tuple[T, T], el.val), el.data)
 
     def extend(self, vals: Iterable[tuple[T, T, Any]]) -> int:
@@ -171,13 +202,23 @@ class IntervalTree(GenericAvlTree, Generic[T]):
         ]
         start_time = time.time()
         tree = IntervalTree()
+        tree2 = IntervalTree()
         added = 0
         for d in data:
-            tree.insert(d[0], d[1], d[2])
-            added += 1
+            added += int(tree.insert(d[0], d[1], d[2]))
+            assert((d[0], d[1]) in tree)
             if print_tree:
                 tree.print(node_to_str=lambda x: f'[{hex(x.val[0])}, {hex(x.val[1])}); {hex(x.max_upper_value)}; {x.data}')
             assert(len(tree) == added)
+        assert(tree != tree2)
+        for d in reversed(data):
+            tree2.insert(d[0], d[1], d[2])
+        # even with different insertion order, the trees should be equal
+        assert(tree == tree2)
+        for d in data:
+            tree2.insert(d[0], d[1], 'some data')
+        # one data value has changed, so they should be unequal
+        assert(tree != tree2)
         for test in tests:
             val = None
             if isinstance(test[0], tuple):
