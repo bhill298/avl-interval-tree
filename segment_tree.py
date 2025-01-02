@@ -1,3 +1,4 @@
+import operator
 import time
 from abc import abstractmethod
 from collections.abc import Iterable
@@ -17,6 +18,8 @@ class IntervalDataType(Protocol):
 
 
 T = TypeVar('T', bound=IntervalDataType)
+_opsgt = [operator.gt, operator.ge]
+_opslt = [operator.lt, operator.le]
 
 class IntervalTreeNode(AvlTreeNode, Generic[T]):
     __slots__ = 'max_upper_value', 'data'
@@ -39,20 +42,17 @@ class IntervalTreeNode(AvlTreeNode, Generic[T]):
         self._init_node()
 
     @staticmethod
-    # TODO: make this more efficient
     def __overlapswith(i1: tuple[T, T], i2: tuple[T, T]) -> bool:
-        if i1[0] == i1[1] and i2[0] == i2[1]:
-            # both intervals at a point
-            return i1[0] == i2[0]
-        elif i1[0] == i1[1]:
-            # i1 is at a point
-            return i1[0] >= i2[0] and i1[0] < i2[1]
-        elif i2[0] == i2[1]:
-            # i2 is at a point
-            return i2[0] >= i1[0] and i2[0] < i1[1]
-        else:
-            # both are intervals
-            return i1[0] < i2[1] and i1[1] > i2[0]
+        """Check if two points or intervals overlap. For points, specify the same start and end point."""
+        # branchless implementation
+        # if i1 is a point, use >=
+        opgt = _opsgt[int(i1[0] == i1[1])]
+        # if i2 is a point, use <=
+        oplt = _opslt[int(i2[0] == i2[1])]
+        # check i1 end is >(=) i2 start and i1 start is <(=) i2 end
+        # if i1 is a point, its start and end are the same, and so the end can be treated as inclusive, use >=
+        # for i2, the same but use <=
+        return opgt(i1[1], i2[0]) and oplt(i1[0], i2[1])
 
     def _update_node_metadata(self, children):
         super()._update_node_metadata(children)
@@ -79,15 +79,18 @@ class IntervalTreeNode(AvlTreeNode, Generic[T]):
         while to_search:
             node = to_search.pop()
             node_max_upper_value = node.max_upper_value
+            # this needs to check if in range first before looking at the max upper value
+            # there is an edge case where this node is a point interval where its max is equal to its point, in which
+            # case it could be a valid overlap that would be skipped if the min if that same value
+            if self.__overlapswith((min, max), node.val):
+                # intervals / points overlap
+                yield node
             if min >= node_max_upper_value:
                 # the start of this interval is greater than the end of this node and all children
                 continue
             if node.left is not None:
                 # search left children
                 to_search.append(node.left)
-            if self.__overlapswith((min, max), node.val):
-                # intervals / points overlap
-                yield node
             if max < node.val[0]:
                 # the end of this interval is less than the start of this node
                 continue
@@ -133,7 +136,9 @@ class IntervalTree(GenericAvlTree, Generic[T]):
                 (STRIDE * 5, STRIDE * 6, 0x1),
                 (STRIDE * 100, STRIDE * 102, 0x2),
                 (STRIDE * 20, STRIDE * 22, 0x3),
-                (STRIDE * 1000, STRIDE * 1010, 0x4)]
+                (STRIDE * 1000, STRIDE * 1010, 0x4),
+                # point range
+                (STRIDE * 1005, STRIDE * 1005, 0x10)]
         tests = [
             # contains 0x0
             (STRIDE * 0, (0x0,)),
@@ -147,14 +152,22 @@ class IntervalTree(GenericAvlTree, Generic[T]):
             (STRIDE * 5, (0x5, 0x1)),
             # contains 0x2
             ((STRIDE * 102) - 1, (0x2,)),
+            # contains 0x1
+            (STRIDE * 20, (0x3,)),
             # contains 0x3
             (STRIDE * 21, (0x3,)),
             # range query
             ((STRIDE * 0, STRIDE * 20), (0x0, 0x5, 0x20, 0x1)),
             # range query
             ((STRIDE * 20, (STRIDE * 100) + 1), (0x3, 0x2)),
+            # in point and range
+            (STRIDE * 1005, (0x4, 0x10)),
+            ((STRIDE * 1004, (STRIDE * 1005) + 1), (0x4, 0x10)),
+            ((STRIDE * 1004, STRIDE * 1005), (0x4,)),
             # contains nothing
             ((STRIDE * 1000) - 1, None),
+            ((STRIDE * 1010), None),
+            ((STRIDE * 1010, STRIDE * 1020), None),
         ]
         start_time = time.time()
         tree = IntervalTree()
