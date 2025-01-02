@@ -655,6 +655,7 @@ class GenericAvlTree(Collection, Generic[T]):
             assert(list(tree.sorted()) == sorted(vals))
             none_parent_count = 0
             seen_vals: set[int] = set()
+            tree2: GenericAvlTree[int] = GenericAvlTree(tree_node_cls)
             for el in tree._root:
                 # the balance should be -1, 0, or 1, the calculated balance and balance from height should match
                 # the parent should also have that node as one of its children
@@ -673,6 +674,14 @@ class GenericAvlTree(Collection, Generic[T]):
                 # the height of each node should be correct
                 assert(el.height == el._calculate_height())
                 seen_vals.add(el.val)
+                tree2.insert(el.val)
+            # test __eq__ comparisons
+            assert(tree == tree2)
+            tree2.clear()
+            # an empty tree should not be equal to a non-empty tree
+            if not tree:
+                tree2.insert(5)
+            assert(tree != tree2)
             # there should exactly one element with no parent (the root)
             # also have to check manually in the empty case since there is nothing to iterate over
             assert(none_parent_count == 1 or (len(tree) == 0 and tree._root.parent is None))
