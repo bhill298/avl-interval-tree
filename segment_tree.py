@@ -23,8 +23,12 @@ class IntervalTreeNode(AvlTreeNode, Generic[T]):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.val: None | tuple[T, T]
+        # this should only ever be None for initial root creation, otherwise every value should have an interval
+        try:
+            self.max_upper_value = cast(tuple[T, T], self.val)[1]
+        except TypeError:
+            self.max_upper_value = None
         self.data: Any = None
-        self.max_upper_value = None
 
     @staticmethod
     def __overlapswith(i1: tuple[T, T], i2: tuple[T, T]) -> bool:
@@ -43,7 +47,7 @@ class IntervalTreeNode(AvlTreeNode, Generic[T]):
 
     def insert(self, to_insert_val: tuple[T, T, Any], *args, **kwargs):
         assert(to_insert_val[1] >= to_insert_val[0])
-        new_root, node, inserted = super().insert(to_insert_val[:2], *args, **kwargs)
+        new_root, node, inserted = super().insert(to_insert_val, *args, **kwargs)
         node = cast(IntervalTreeNode, node)
         node.max_upper_value = cast(tuple, node.val)[1]
         # this will update the node if it already existed
@@ -129,7 +133,7 @@ class IntervalTree(GenericAvlTree, Generic[T]):
         tree = IntervalTree()
         for d in data:
             tree.insert(d[0], d[1], d[2])
-        tree.print(node_to_str=lambda x: f'[{hex(x.val[0])}, {hex(x.val[1])}); {x.max_upper_value}; {x.data}')
+        tree.print(node_to_str=lambda x: f'[{hex(x.val[0])}, {hex(x.val[1])}); {hex(x.max_upper_value)}; {x.data}')
         for test in tests:
             val = None
             vals = list(tree.search(test[0]))
