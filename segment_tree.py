@@ -104,9 +104,11 @@ class IntervalTreeNode(AvlTreeNode, Generic[T]):
         to_search: list[Any] = [self]
         while to_search:
             node = to_search.pop()
-            # this needs to check if in range first before looking at the max upper value
-            # there is an edge case where this node is a point interval where its max is equal to its point, in which
-            # case it could be a valid overlap that would be skipped if the min if that same value
+            # this needs to be strictly greater than in case one of the intervals is a point interval, in which case its
+            # max and min are equal and thus it could still be in range
+            if min > node.max_upper_value:
+                # the start of this interval is greater than the end of this node and all children
+                continue
             if exact:
                 if node.val == (min, max):
                     yield node
@@ -116,9 +118,6 @@ class IntervalTreeNode(AvlTreeNode, Generic[T]):
                 if self.__overlapswith((min, max), node.val):
                     # intervals / points overlap
                     yield node
-            if min >= node.max_upper_value:
-                # the start of this interval is greater than the end of this node and all children
-                continue
             if node.left is not None:
                 # search left children
                 to_search.append(node.left)
