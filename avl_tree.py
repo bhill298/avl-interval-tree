@@ -2,7 +2,7 @@ import math
 import shutil
 from abc import abstractmethod
 from collections.abc import Collection, Iterable
-from typing import Any, Callable, cast, Generic, Optional, Protocol, Type, TypeVar
+from typing import Any, cast, Generic, Optional, Protocol, Type, TypeVar
 
 
 class ComparableTreeDataType(Protocol):
