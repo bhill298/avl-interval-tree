@@ -1,6 +1,7 @@
 ## AVL Interval Tree
 
-A python AVL tree implementation and an interval tree implementation that uses the AVL tree.
+A python AVL tree implementation and an interval tree implementation that uses the AVL tree. python 3.10 or newer is
+required.
 
 ### AVL Tree
 An AVL tree is a form of self-balancing binary search tree. It can efficiently
