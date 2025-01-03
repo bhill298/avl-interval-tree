@@ -4,8 +4,9 @@ A python AVL tree implementation and an interval tree implementation that uses t
 required.
 
 ### AVL Tree
-An AVL tree is a form of self-balancing binary search tree. It can efficiently
-store and query sortable values (e.g. integers or strings).
+An AVL tree is a form of self-balancing binary search tree. It can efficiently store and query sortable keys (e.g.
+integers or strings). This AVL tree implementation is key-only, but values attached to each node can be added easily if
+desired. The interval tree implementation adds values for example.
 #### Example
 ```python
 from avl_tree import AvlTree
@@ -24,12 +25,10 @@ print(list(tree.sorted()))
 ```
 
 ### Interval Tree
-An interval tree lets you efficiently store and query 2D intervals or points in
-the form of [min, max) (they can be extended into higher dimensions in general,
-but this implementation supports 2D intervals). You can then query all
-intervals that intersect a given interval or point. A point is an interval with
-the same min and max. Each interval in the tree can store a piece of data
-associated with it.
+An interval tree lets you efficiently store and query 2D intervals or points in the form of [min, max) (they can be
+extended into higher dimensions in general, but this implementation supports 2D intervals). You can then query all
+intervals that intersect a given interval or point. A point is an interval with the same min and max. Each interval in
+the tree can store a piece of data associated with it.
 #### Example
 ```python
 from interval_tree import IntervalTree
