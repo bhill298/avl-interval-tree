@@ -83,7 +83,7 @@ class IntervalTreeNode(AvlTreeNode, Generic[T]):
         """Insert an interval and a data value associated with the interval in the form (min, max, data). A point can be
         inserted by making min and max the same.
         """
-        assert(to_insert_val[1] >= to_insert_val[0] and to_insert_val[2] is not None)
+        assert(to_insert_val[1] >= to_insert_val[0])
         new_root, node, inserted = super().insert(to_insert_val, *args, **kwargs)
         node = cast(IntervalTreeNode, node)
         # this will update the node value if it already existed
@@ -119,17 +119,24 @@ class IntervalTreeNode(AvlTreeNode, Generic[T]):
                     # intervals / points overlap
                     yield node
             if node.left is not None:
-                # search left children
+                # search left children (check unconditionally; know that the max may be greater than our min, so nodes
+                # in the left subtree may overlap us now matter how small their start is)
                 to_search.append(node.left)
             if max < node.val[0]:
-                # the end of this interval is less than the start of this node
+                # the end of the interval being searched for is less than the node's start (all nodes in right subtree
+                # start to the right of this interval's bounds)
                 continue
             if node.right is not None:
-                # search right children
+                # search right children (right nodes may have a start within this interval, so they may overlap)
                 to_search.append(node.right)
         
 
 class IntervalTree(GenericAvlTree, Generic[T]):
+    """Interval tree based on a self-balancing AVL tree. Intervals are stored in the form [max, min) and are sorted
+    based on interval start (with the interval end as a tiebreaker). Each interval may store a piece of data that can be
+    retrieved when searching the tree. Additionally, the max upper value of each node and all descendents is stored to
+    make searches faster. Point intervals and queries, where the min and max are the same, are allowed.
+    """
     def __init__(self, *args, **kwargs):
         self._root: IntervalTreeNode
         super().__init__(IntervalTreeNode, *args, **kwargs)
